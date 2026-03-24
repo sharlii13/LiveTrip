@@ -1,0 +1,740 @@
+{
+  "mumbai": {
+    "name": "Mumbai",
+    "country": "India",
+    "coordinates": {
+      "latitude": 19.0760,
+      "longitude": 72.8777
+    },
+    "default_days": 3,
+    "currency": "INR",
+    "timezone": "Asia/Kolkata",
+    "templates": {
+      "happy": {
+        "day_1": {
+          "morning": [
+            {
+              "time": "09:00",
+              "activity": "Visit Gateway of India",
+              "location": "Apollo Bandar, Colaba",
+              "coordinates": {
+                "latitude": 18.9220,
+                "longitude": 72.8347
+              },
+              "duration": "2 hours",
+              "type": "sightseeing",
+              "cost": "Free",
+              "rating": 4.5,
+              "description": "Iconic arch monument overlooking the Arabian Sea",
+              "tips": "Best time to visit is early morning to avoid crowds"
+            }
+          ],
+          "afternoon": [
+            {
+              "time": "14:00",
+              "activity": "Explore Colaba Causeway",
+              "location": "Colaba Market",
+              "coordinates": {
+                "latitude": 18.9067,
+                "longitude": 72.8147
+              },
+              "duration": "3 hours",
+              "type": "shopping",
+              "cost": "₹500-2000",
+              "rating": 4.2,
+              "description": "Bustling street market for shopping and street food",
+              "tips": "Bargain for better prices, try local street food"
+            }
+          ],
+          "evening": [
+            {
+              "time": "18:00",
+              "activity": "Marine Drive Sunset",
+              "location": "Marine Drive",
+              "coordinates": {
+                "latitude": 18.9434,
+                "longitude": 72.8234
+              },
+              "duration": "2 hours",
+              "type": "relaxation",
+              "cost": "Free",
+              "rating": 4.7,
+              "description": "Enjoy sunset at the Queen's Necklace",
+              "tips": "Perfect spot for evening walks and street food"
+            }
+          ]
+        },
+        "day_2": {
+          "morning": [
+            {
+              "time": "10:00",
+              "activity": "Visit Elephanta Caves",
+              "location": "Elephanta Island",
+              "coordinates": {
+                "latitude": 18.9633,
+                "longitude": 72.9411
+              },
+              "duration": "4 hours",
+              "type": "heritage",
+              "cost": "₹40 + Ferry ₹150",
+              "rating": 4.3,
+              "description": "UNESCO World Heritage rock-cut caves",
+              "tips": "Take ferry from Gateway of India, carry water and snacks"
+            }
+          ],
+          "afternoon": [
+            {
+              "time": "15:00",
+              "activity": "Lunch at Leopold Cafe",
+              "location": "Leopold Cafe, Colaba",
+              "coordinates": {
+                "latitude": 18.9220,
+                "longitude": 72.8310
+              },
+              "duration": "1 hour",
+              "type": "dining",
+              "cost": "₹800-1500",
+              "rating": 4.0,
+              "description": "Historic cafe with continental cuisine",
+              "tips": "Famous for its history and ambiance"
+            }
+          ],
+          "evening": [
+            {
+              "time": "19:00",
+              "activity": "Bollywood Tour",
+              "location": "Film City",
+              "coordinates": {
+                "latitude": 19.1136,
+                "longitude": 72.8697
+              },
+              "duration": "3 hours",
+              "type": "entertainment",
+              "cost": "₹1200-2500",
+              "rating": 4.1,
+              "description": "Behind-the-scenes tour of Bollywood studios",
+              "tips": "Book in advance, photography may be restricted"
+            }
+          ]
+        },
+        "day_3": {
+          "morning": [
+            {
+              "time": "09:00",
+              "activity": "Dhobi Ghat Visit",
+              "location": "Mahalaxmi",
+              "coordinates": {
+                "latitude": 18.9894,
+                "longitude": 72.8252
+              },
+              "duration": "2 hours",
+              "type": "cultural",
+              "cost": "Free",
+              "rating": 4.0,
+              "description": "World's largest outdoor laundry",
+              "tips": "Best viewed from Mahalaxmi railway station bridge"
+            }
+          ],
+          "afternoon": [
+            {
+              "time": "13:00",
+              "activity": "Crawford Market Shopping",
+              "location": "Crawford Market",
+              "coordinates": {
+                "latitude": 18.9497,
+                "longitude": 72.8326
+              },
+              "duration": "2 hours",
+              "type": "shopping",
+              "cost": "₹300-1000",
+              "rating": 4.1,
+              "description": "Historic market for fruits, spices, and souvenirs",
+              "tips": "Great for authentic Mumbai spices and dry fruits"
+            }
+          ],
+          "evening": [
+            {
+              "time": "17:00",
+              "activity": "Juhu Beach",
+              "location": "Juhu",
+              "coordinates": {
+                "latitude": 19.0896,
+                "longitude": 72.8656
+              },
+              "duration": "3 hours",
+              "type": "relaxation",
+              "cost": "Free + Food ₹200-500",
+              "rating": 4.2,
+              "description": "Popular beach with street food and sunset views",
+              "tips": "Try bhel puri and pav bhaji, avoid peak hours"
+            }
+          ]
+        }
+      },
+      "adventurous": {
+        "day_1": {
+          "morning": [
+            {
+              "time": "06:00",
+              "activity": "Trek to Kanheri Caves",
+              "location": "Sanjay Gandhi National Park",
+              "coordinates": {
+                "latitude": 19.2094,
+                "longitude": 72.9089
+              },
+              "duration": "4 hours",
+              "type": "adventure",
+              "cost": "₹46 + Guide ₹500",
+              "rating": 4.4,
+              "description": "Ancient Buddhist caves with trekking trails",
+              "tips": "Carry water, wear comfortable shoes, start early"
+            }
+          ],
+          "afternoon": [
+            {
+              "time": "14:00",
+              "activity": "Rock Climbing at Tikona Fort",
+              "location": "Tikona Fort, Lonavala",
+              "coordinates": {
+                "latitude": 18.6298,
+                "longitude": 73.4273
+              },
+              "duration": "4 hours",
+              "type": "adventure",
+              "cost": "₹1500-2500",
+              "rating": 4.6,
+              "description": "Rock climbing and fort exploration",
+              "tips": "Professional guide recommended, carry safety gear"
+            }
+          ],
+          "evening": [
+            {
+              "time": "19:00",
+              "activity": "Night Food Walk",
+              "location": "Mohammed Ali Road",
+              "coordinates": {
+                "latitude": 18.9625,
+                "longitude": 72.8347
+              },
+              "duration": "3 hours",
+              "type": "food_adventure",
+              "cost": "₹300-800",
+              "rating": 4.5,
+              "description": "Street food adventure tour",
+              "tips": "Come hungry, try kebabs and biryani, evening is best time"
+            }
+          ]
+        }
+      },
+      "romantic": {
+        "day_1": {
+          "morning": [
+            {
+              "time": "10:00",
+              "activity": "Private Yacht Experience",
+              "location": "Mumbai Harbor",
+              "coordinates": {
+                "latitude": 18.9220,
+                "longitude": 72.8347
+              },
+              "duration": "3 hours",
+              "type": "luxury",
+              "cost": "₹8000-15000",
+              "rating": 4.8,
+              "description": "Private yacht cruise with breakfast",
+              "tips": "Book sunset slot for romantic experience"
+            }
+          ],
+          "afternoon": [
+            {
+              "time": "15:00",
+              "activity": "Couple Spa at Taj Hotel",
+              "location": "Taj Mahal Palace Hotel",
+              "coordinates": {
+                "latitude": 18.9216,
+                "longitude": 72.8330
+              },
+              "duration": "2 hours",
+              "type": "wellness",
+              "cost": "₹12000-18000",
+              "rating": 4.9,
+              "description": "Luxurious couple spa treatment",
+              "tips": "Book in advance, perfect for special occasions"
+            }
+          ],
+          "evening": [
+            {
+              "time": "19:00",
+              "activity": "Fine Dining at Trishna",
+              "location": "Trishna Restaurant, Fort",
+              "coordinates": {
+                "latitude": 18.9386,
+                "longitude": 72.8353
+              },
+              "duration": "2 hours",
+              "type": "fine_dining",
+              "cost": "₹4000-6000",
+              "rating": 4.7,
+              "description": "Michelin-starred contemporary Indian cuisine",
+              "tips": "Reservations mandatory, dress code applies"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "goa": {
+    "name": "Goa",
+    "country": "India",
+    "coordinates": {
+      "latitude": 15.2993,
+      "longitude": 74.1240
+    },
+    "default_days": 3,
+    "currency": "INR",
+    "timezone": "Asia/Kolkata",
+    "templates": {
+      "relaxed": {
+        "day_1": {
+          "morning": [
+            {
+              "time": "10:00",
+              "activity": "Relax at Calangute Beach",
+              "location": "Calangute Beach",
+              "coordinates": {
+                "latitude": 15.5430,
+                "longitude": 73.7551
+              },
+              "duration": "3 hours",
+              "type": "beach",
+              "cost": "₹500-1000 (water sports)",
+              "rating": 4.2,
+              "description": "Popular beach with water sports and shacks",
+              "tips": "Try parasailing and jet skiing, apply sunscreen"
+            }
+          ],
+          "afternoon": [
+            {
+              "time": "15:00",
+              "activity": "Ayurvedic Spa Treatment",
+              "location": "Beach Resort Spa",
+              "coordinates": {
+                "latitude": 15.5430,
+                "longitude": 73.7551
+              },
+              "duration": "2 hours",
+              "type": "wellness",
+              "cost": "₹3000-5000",
+              "rating": 4.6,
+              "description": "Traditional Ayurvedic massage and relaxation",
+              "tips": "Book with certified therapists, drink plenty of water"
+            }
+          ],
+          "evening": [
+            {
+              "time": "18:00",
+              "activity": "Sunset Cruise",
+              "location": "Mandovi River",
+              "coordinates": {
+                "latitude": 15.5057,
+                "longitude": 73.9964
+              },
+              "duration": "2 hours",
+              "type": "leisure",
+              "cost": "₹1200-2000",
+              "rating": 4.5,
+              "description": "Peaceful river cruise with dinner and live music",
+              "tips": "Book sunset timing, includes dinner and entertainment"
+            }
+          ]
+        },
+        "day_2": {
+          "morning": [
+            {
+              "time": "09:00",
+              "activity": "Visit Old Goa Churches",
+              "location": "Basilica of Bom Jesus",
+              "coordinates": {
+                "latitude": 15.5009,
+                "longitude": 73.9115
+              },
+              "duration": "3 hours",
+              "type": "heritage",
+              "cost": "Free",
+              "rating": 4.4,
+              "description": "UNESCO World Heritage Portuguese churches",
+              "tips": "Dress modestly, visit Se Cathedral and St. Francis of Assisi Church nearby"
+            }
+          ],
+          "afternoon": [
+            {
+              "time": "14:00",
+              "activity": "Spice Plantation Tour",
+              "location": "Sahakari Spice Farm",
+              "coordinates": {
+                "latitude": 15.3173,
+                "longitude": 74.0833
+              },
+              "duration": "3 hours",
+              "type": "nature",
+              "cost": "₹700-1200",
+              "rating": 4.3,
+              "description": "Guided tour with traditional Goan lunch",
+              "tips": "Includes elephant ride and traditional lunch"
+            }
+          ],
+          "evening": [
+            {
+              "time": "19:00",
+              "activity": "Beach Dinner at Anjuna",
+              "location": "Anjuna Beach",
+              "coordinates": {
+                "latitude": 15.5736,
+                "longitude": 73.7440
+              },
+              "duration": "2 hours",
+              "type": "dining",
+              "cost": "₹1500-2500",
+              "rating": 4.4,
+              "description": "Beachside dining with live music",
+              "tips": "Famous for flea market on Wednesdays, great nightlife"
+            }
+          ]
+        }
+      },
+      "party": {
+        "day_1": {
+          "morning": [
+            {
+              "time": "11:00",
+              "activity": "Beach Hopping",
+              "location": "Baga to Anjuna",
+              "coordinates": {
+                "latitude": 15.5560,
+                "longitude": 73.7516
+              },
+              "duration": "4 hours",
+              "type": "beach",
+              "cost": "₹500-1500",
+              "rating": 4.3,
+              "description": "Visit multiple beaches and beach clubs",
+              "tips": "Rent a scooter for easy travel between beaches"
+            }
+          ],
+          "evening": [
+            {
+              "time": "20:00",
+              "activity": "Club Cubana Night",
+              "location": "Club Cubana, Arpora",
+              "coordinates": {
+                "latitude": 15.5736,
+                "longitude": 73.7440
+              },
+              "duration": "4 hours",
+              "type": "nightlife",
+              "cost": "₹2000-3500",
+              "rating": 4.6,
+              "description": "Famous hilltop nightclub with pool",
+              "tips": "Entry includes 2 drinks, dress code applies"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "delhi": {
+    "name": "Delhi",
+    "country": "India",
+    "coordinates": {
+      "latitude": 28.7041,
+      "longitude": 77.1025
+    },
+    "default_days": 3,
+    "currency": "INR",
+    "timezone": "Asia/Kolkata",
+    "templates": {
+      "cultural": {
+        "day_1": {
+          "morning": [
+            {
+              "time": "09:00",
+              "activity": "Visit Red Fort",
+              "location": "Old Delhi",
+              "coordinates": {
+                "latitude": 28.6562,
+                "longitude": 77.2410
+              },
+              "duration": "2 hours",
+              "type": "heritage",
+              "cost": "₹35 + Guide ₹500",
+              "rating": 4.3,
+              "description": "Mughal era fort and UNESCO World Heritage Site",
+              "tips": "Audio guide available, avoid Mondays (closed)"
+            }
+          ],
+          "afternoon": [
+            {
+              "time": "14:00",
+              "activity": "Chandni Chowk Food Tour",
+              "location": "Chandni Chowk",
+              "coordinates": {
+                "latitude": 28.6506,
+                "longitude": 77.2334
+              },
+              "duration": "3 hours",
+              "type": "food_culture",
+              "cost": "₹300-800",
+              "rating": 4.5,
+              "description": "Historic market with authentic Delhi street food",
+              "tips": "Try parathas at Paranthe Wali Gali, lassi at Old Famous Jalebi Wala"
+            }
+          ],
+          "evening": [
+            {
+              "time": "18:00",
+              "activity": "India Gate & Rajpath",
+              "location": "India Gate",
+              "coordinates": {
+                "latitude": 28.6129,
+                "longitude": 77.2295
+              },
+              "duration": "2 hours",
+              "type": "monument",
+              "cost": "Free",
+              "rating": 4.4,
+              "description": "War memorial and ceremonial boulevard",
+              "tips": "Best time for evening walk, ice cream vendors available"
+            }
+          ]
+        },
+        "day_2": {
+          "morning": [
+            {
+              "time": "08:00",
+              "activity": "Humayun's Tomb",
+              "location": "Nizamuddin East",
+              "coordinates": {
+                "latitude": 28.5933,
+                "longitude": 77.2507
+              },
+              "duration": "2 hours",
+              "type": "heritage",
+              "cost": "₹30",
+              "rating": 4.5,
+              "description": "Precursor to Taj Mahal architecture",
+              "tips": "Best in morning light, UNESCO World Heritage Site"
+            }
+          ],
+          "afternoon": [
+            {
+              "time": "13:00",
+              "activity": "Qutub Minar Complex",
+              "location": "Mehrauli",
+              "coordinates": {
+                "latitude": 28.5245,
+                "longitude": 77.1855
+              },
+              "duration": "2 hours",
+              "type": "heritage",
+              "cost": "₹35",
+              "rating": 4.4,
+              "description": "Tallest brick minaret in the world",
+              "tips": "Climb restrictions apply, explore Iron Pillar nearby"
+            }
+          ],
+          "evening": [
+            {
+              "time": "17:00",
+              "activity": "Lotus Temple",
+              "location": "Kalkaji",
+              "coordinates": {
+                "latitude": 28.5535,
+                "longitude": 77.2588
+              },
+              "duration": "1.5 hours",
+              "type": "spiritual",
+              "cost": "Free",
+              "rating": 4.6,
+              "description": "Bahai House of Worship with unique architecture",
+              "tips": "Maintain silence inside, remove shoes before entering"
+            }
+          ]
+        }
+      },
+      "modern": {
+        "day_1": {
+          "morning": [
+            {
+              "time": "10:00",
+              "activity": "Connaught Place Shopping",
+              "location": "Connaught Place",
+              "coordinates": {
+                "latitude": 28.6315,
+                "longitude": 77.2167
+              },
+              "duration": "3 hours",
+              "type": "shopping",
+              "cost": "₹1000-5000",
+              "rating": 4.2,
+              "description": "Central Delhi shopping and business district",
+              "tips": "Visit Janpath market nearby for handicrafts"
+            }
+          ],
+          "afternoon": [
+            {
+              "time": "15:00",
+              "activity": "DLF CyberHub Experience",
+              "location": "Gurgaon",
+              "coordinates": {
+                "latitude": 28.4950,
+                "longitude": 77.0890
+              },
+              "duration": "3 hours",
+              "type": "modern_dining",
+              "cost": "₹2000-4000",
+              "rating": 4.3,
+              "description": "Modern dining and entertainment complex",
+              "tips": "Multiple cuisine options, good for corporate meetings"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "bangalore": {
+    "name": "Bangalore",
+    "country": "India",
+    "coordinates": {
+      "latitude": 12.9716,
+      "longitude": 77.5946
+    },
+    "default_days": 2,
+    "currency": "INR",
+    "timezone": "Asia/Kolkata",
+    "templates": {
+      "tech": {
+        "day_1": {
+          "morning": [
+            {
+              "time": "09:00",
+              "activity": "Vidhana Soudha",
+              "location": "Ambedkar Veedhi",
+              "coordinates": {
+                "latitude": 12.9791,
+                "longitude": 77.5912
+              },
+              "duration": "1 hour",
+              "type": "architecture",
+              "cost": "Free (exterior)",
+              "rating": 4.2,
+              "description": "Seat of Karnataka state legislature",
+              "tips": "Photography restricted, best viewed from outside"
+            }
+          ],
+          "afternoon": [
+            {
+              "time": "14:00",
+              "activity": "Bangalore Palace",
+              "location": "Palace Road",
+              "coordinates": {
+                "latitude": 12.9985,
+                "longitude": 77.5848
+              },
+              "duration": "2 hours",
+              "type": "heritage",
+              "cost": "₹230",
+              "rating": 4.0,
+              "description": "Tudor-style palace with vintage furniture",
+              "tips": "Audio guide available, photography charges extra"
+            }
+          ],
+          "evening": [
+            {
+              "time": "18:00",
+              "activity": "MG Road & Brigade Road",
+              "location": "MG Road",
+              "coordinates": {
+                "latitude": 12.9719,
+                "longitude": 77.6197
+              },
+              "duration": "3 hours",
+              "type": "shopping",
+              "cost": "₹1000-3000",
+              "rating": 4.3,
+              "description": "Popular shopping and pub area",
+              "tips": "Great for pub hopping, try local craft beer"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "jaipur": {
+    "name": "Jaipur",
+    "country": "India",
+    "coordinates": {
+      "latitude": 26.9124,
+      "longitude": 75.7873
+    },
+    "default_days": 3,
+    "currency": "INR",
+    "timezone": "Asia/Kolkata",
+    "templates": {
+      "royal": {
+        "day_1": {
+          "morning": [
+            {
+              "time": "08:00",
+              "activity": "Amber Fort",
+              "location": "Amer",
+              "coordinates": {
+                "latitude": 26.9855,
+                "longitude": 75.8513
+              },
+              "duration": "3 hours",
+              "type": "heritage",
+              "cost": "₹200 + Elephant ride ₹1100",
+              "rating": 4.6,
+              "description": "Hilltop fort with stunning architecture",
+              "tips": "Start early to avoid crowds, elephant ride optional"
+            }
+          ],
+          "afternoon": [
+            {
+              "time": "14:00",
+              "activity": "City Palace Complex",
+              "location": "City Palace",
+              "coordinates": {
+                "latitude": 26.9255,
+                "longitude": 75.8235
+              },
+              "duration": "2 hours",
+              "type": "heritage",
+              "cost": "₹200-700",
+              "rating": 4.5,
+              "description": "Royal residence with museums and courtyards",
+              "tips": "Combo ticket includes multiple palaces"
+            }
+          ],
+          "evening": [
+            {
+              "time": "17:00",
+              "activity": "Hawa Mahal",
+              "location": "Badi Choupad",
+              "coordinates": {
+                "latitude": 26.9239,
+                "longitude": 75.8267
+              },
+              "duration": "1 hour",
+              "type": "architecture",
+              "cost": "₹50",
+              "rating": 4.3,
+              "description": "Palace of Winds with unique facade",
+              "tips": "Best viewed from street, interior visit optional"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

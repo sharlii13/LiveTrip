@@ -1,0 +1,7 @@
+{
+  "sample_key": {
+    "data": "Sample cache data",
+    "timestamp": 1696435200,
+    "ttl": 86400
+  }
+}

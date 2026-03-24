@@ -1,0 +1,40 @@
+# Core FastAPI
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.8.2
+pydantic-settings==2.5.0
+
+
+# HTTP client - Modern version
+httpx>=0.25.0
+requests>=2.31.0
+
+# Database
+sqlalchemy>=2.0.23
+geopy>=2.3.0
+
+# Environment and utilities
+python-dotenv>=1.0.0
+typing-extensions>=4.8.0
+
+# Backend functionality
+twilio>=8.10.0
+deep-translator>=1.11.4
+python-multipart>=0.0.6
+aiofiles>=23.2.1
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+schedule>=1.2.0
+jinja2>=3.1.2
+
+# PDF and file handling
+reportlab==4.0.4
+
+# Time handling
+pytz>=2023.3
+
+# Language detection (for translation router)
+langdetect>=1.0.9
+
+# Additional packages that might be needed
+email-validator>=2.0.0
