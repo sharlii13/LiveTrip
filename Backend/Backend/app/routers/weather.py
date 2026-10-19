@@ -48,7 +48,7 @@ cache5m = SimpleCache(5)
 
 # ✅ Settings functions
 def get_openweather_api_key():
-    return os.getenv("OPENWEATHER_API_KEY", "d021025aed18cf0d44575b63a855baea")
+    return os.getenv("OPENWEATHER_API_KEY", "")
 
 def get_openweather_base_url():
     return "http://api.openweathermap.org/data/2.5"

@@ -1,3 +1,4 @@
+from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -298,6 +299,10 @@ if GAMIFICATION_ENABLED:
 # Export router
 safe_import_router("export", "Export", "EXPORT_ENABLED")
 
+# Multi-day planner (root planner merged in as app.rootplan)
+from routers import multiday
+app.include_router(multiday.router)
+
 # Clear OpenAPI schema cache to reflect new routes
 app.openapi_schema = None
 
@@ -510,6 +515,15 @@ async def health_check():
         raise HTTPException(status_code=503, detail="Service unhealthy")
 
 # ✅ Enhanced Smart Chatbot Integration
+# Auth stubs: no login provider is wired yet, so the session is always anonymous
+@app.get("/api/auth/me", summary="Current user", tags=["🏠 Core API"])
+async def auth_me():
+    return JSONResponse(status_code=401, content={"user": None, "detail": "Not authenticated"})
+
+@app.post("/api/auth/logout", summary="Logout", tags=["🏠 Core API"])
+async def auth_logout():
+    return {"success": True}
+
 @app.post("/api/chatbot/quick-suggestion", 
           response_model=ChatbotResponse,
           summary="Quick AI Suggestion",
@@ -648,139 +662,7 @@ class MultiDayPlanResponse(BaseModel):
     days: List[MultiDayItinerary]
     last_updated: str
 
-@app.post("/api/itinerary/plan-multi-day",
-          summary="Plan Multi-Day Itinerary",
-          description="Create optimized multi-day itinerary with time scheduling",
-          tags=["🧠 Itinerary Optimization"],
-          response_model=MultiDayPlanResponse)
-async def plan_multi_day_trip(request: MultiDayPlanRequest):
-    """Create optimized multi-day itinerary with time scheduling"""
-    try:
-        # Sample popular attractions by city
-        city_attractions = {
-            "pune": [
-                {"name": "Dagadusheth Temple", "category": "temple", "duration": 45},
-                {"name": "Shaniwar Wada", "category": "historic", "duration": 90},
-                {"name": "Aga Khan Palace", "category": "historic", "duration": 60},
-                {"name": "Sinhagad Fort", "category": "fort", "duration": 180},
-                {"name": "Pune University", "category": "educational", "duration": 45},
-                {"name": "Koregaon Park", "category": "park", "duration": 60},
-                {"name": "Phoenix MarketCity", "category": "shopping", "duration": 120},
-                {"name": "Osho Ashram", "category": "spiritual", "duration": 75}
-            ],
-            "mumbai": [
-                {"name": "Gateway of India", "category": "monument", "duration": 60},
-                {"name": "Marine Drive", "category": "scenic", "duration": 45},
-                {"name": "Elephanta Caves", "category": "historic", "duration": 240},
-                {"name": "Juhu Beach", "category": "beach", "duration": 90},
-                {"name": "Chhatrapati Shivaji Terminus", "category": "architecture", "duration": 30},
-                {"name": "Haji Ali Dargah", "category": "religious", "duration": 60},
-                {"name": "Bandra-Worli Sea Link", "category": "modern", "duration": 30},
-                {"name": "Crawford Market", "category": "shopping", "duration": 90}
-            ],
-            "paris": [
-                {"name": "Eiffel Tower", "category": "monument", "duration": 90},
-                {"name": "Louvre Museum", "category": "museum", "duration": 180},
-                {"name": "Notre-Dame Cathedral", "category": "historic", "duration": 75},
-                {"name": "Montmartre & Sacré-Cœur", "category": "district", "duration": 120},
-                {"name": "Champs-Élysées", "category": "shopping", "duration": 90},
-                {"name": "Seine River Cruise", "category": "activity", "duration": 60},
-                {"name": "Arc de Triomphe", "category": "monument", "duration": 45},
-                {"name": "Versailles Palace", "category": "palace", "duration": 300}
-            ]
-        }
-        
-        # Get attractions for the requested city (default to Pune if not found)
-        attractions = city_attractions.get(request.city.lower(), city_attractions["pune"])
-        
-        # Calculate daily schedule based on pace
-        pace_multipliers = {"slow": 0.7, "normal": 1.0, "fast": 1.3}
-        daily_capacity_hours = {
-            "slow": 6, "normal": 8, "fast": 10
-        }
-        
-        pace_factor = pace_multipliers.get(request.pace, 1.0)
-        daily_hours = daily_capacity_hours.get(request.pace, 8)
-        daily_minutes = daily_hours * 60
-        
-        # Generate itinerary for each day
-        days_data = []
-        current_date = datetime.now().date()
-        
-        # Calculate start and end times
-        start_hour, start_min = map(int, request.start_time.split(':'))
-        end_hour, end_min = map(int, request.end_time.split(':'))
-        start_minutes = start_hour * 60 + start_min
-        end_minutes = end_hour * 60 + end_min
-        available_minutes_per_day = end_minutes - start_minutes
-        
-        for day in range(request.days):
-            day_date = current_date + timedelta(days=day)
-            current_time = start_minutes
-            
-            # Select attractions for this day (distribute evenly across days)
-            attractions_per_day = len(attractions) // request.days + (1 if day < len(attractions) % request.days else 0)
-            start_idx = day * (len(attractions) // request.days)
-            day_attractions = attractions[start_idx:start_idx + min(4, attractions_per_day)]  # Max 4 per day
-            
-            day_items = []
-            total_travel_time = 0
-            
-            for i, attraction in enumerate(day_attractions):
-                if current_time >= end_minutes:
-                    break
-                    
-                # Calculate duration with pace factor
-                base_duration = attraction["duration"]
-                actual_duration = int(base_duration / pace_factor)
-                
-                # Add travel time (estimated 15-30 min between attractions)
-                if i > 0:
-                    travel_time = 20  # Average travel time
-                    current_time += travel_time
-                    total_travel_time += travel_time
-                
-                if current_time + actual_duration > end_minutes:
-                    actual_duration = max(30, end_minutes - current_time)  # Minimum 30 min
-                
-                arrive_time = f"{current_time // 60:02d}:{current_time % 60:02d}"
-                current_time += actual_duration
-                depart_time = f"{current_time // 60:02d}:{current_time % 60:02d}"
-                
-                day_items.append(MultiDayPOI(
-                    name=attraction["name"],
-                    category=attraction["category"],
-                    arrive_at=arrive_time,
-                    depart_at=depart_time,
-                    duration_min=actual_duration
-                ))
-                
-                # Add buffer time
-                current_time += 15
-            
-            # Calculate stats
-            total_duration = sum(item.duration_min for item in day_items)
-            
-            days_data.append(MultiDayItinerary(
-                date=day_date.strftime("%Y-%m-%d"),
-                items=day_items,
-                stats={
-                    "total_travel_min": total_travel_time,
-                    "total_duration": total_duration
-                }
-            ))
-        
-        # Format current time for last_updated
-        current_time_str = datetime.now().strftime("%H:%M")
-        
-        return MultiDayPlanResponse(
-            days=days_data,
-            last_updated=current_time_str
-        )
-        
-    except Exception as e:
-        logger.error(f"Error planning multi-day trip: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to plan multi-day trip: {str(e)}")
+# Multi-day planning: real planner lives in routers/multiday.py
 
 # ✅ Single-Day Itinerary Creation Endpoint (for compatibility)
 @app.post("/api/itinerary/create",

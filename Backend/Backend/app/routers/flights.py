@@ -50,7 +50,7 @@ cache5m = SimpleCache(5)
 
 # ✅ Settings functions
 def get_aviationstack_api_key():
-    return os.getenv("AVIATIONSTACK_API_KEY", "your_api_key_here")
+    return os.getenv("AVIATIONSTACK_API_KEY", "")
 
 def get_aviationstack_base_url():
     return os.getenv("AVIATIONSTACK_BASE_URL", "http://api.aviationstack.com/v1")

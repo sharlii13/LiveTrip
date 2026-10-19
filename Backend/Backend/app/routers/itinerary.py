@@ -535,7 +535,7 @@ async def update_optimization_weights(
             detail=f"Error updating weights: {str(e)}"
         )
 
-@router.get("/{itinerary_id}",
+@router.get("/{itinerary_id:int}",
            summary="📋 Get Itinerary Details",
            description="Retrieve complete itinerary with optimized route and calculated scores")
 async def get_itinerary(

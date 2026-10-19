@@ -261,7 +261,7 @@ MOCK_TRIPS = {
             description="Download itinerary in various formats (TXT, JSON)")
 async def download_itinerary(
     trip_id: int,
-    format: str = Query("txt", regex="^(txt|json)$", description="Download format"),
+    format: str = Query("txt", pattern="^(txt|json)$", description="Download format"),
     db: Session = Depends(get_db)
 ):
     """📥 Download itinerary in various formats"""

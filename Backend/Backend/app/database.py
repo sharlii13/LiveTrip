@@ -344,6 +344,9 @@ class ItineraryAdjustment(Base):
     flight = relationship("UserFlight")
 
 # Create all tables
-Base.metadata.create_all(bind=engine)
+def create_tables():
+    Base.metadata.create_all(bind=engine)
+
+create_tables()
 
 print("✅ Database initialized with complete gamification, SOS system, and flight tracking!")

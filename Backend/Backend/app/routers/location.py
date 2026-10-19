@@ -55,12 +55,12 @@ class GeofenceEvent(BaseModel):
     user_id: int = Field(..., gt=0)
     lat: float = Field(..., ge=-90, le=90)
     lng: float = Field(..., ge=-180, le=180)
-    event_type: str = Field(..., regex="^(enter|exit)$")
+    event_type: str = Field(..., pattern="^(enter|exit)$")
     poi_id: Optional[int] = Field(None, description="Point of Interest ID")
     poi_name: Optional[str] = Field(None, description="POI name")
 
 class EcoTrackingSession(BaseModel):
-    transport_mode: str = Field(..., regex="^(walking|cycling|public_transport)$")
+    transport_mode: str = Field(..., pattern="^(walking|cycling|public_transport)$")
     start_location: Optional[Dict[str, float]] = None
     target_destination: Optional[Dict[str, float]] = None
 

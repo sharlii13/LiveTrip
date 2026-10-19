@@ -54,7 +54,7 @@ export async function createCompleteItineraryFromCity(city: string, userId = 1, 
   ]) {
     // Debug: log each query
     console.log('[createCompleteItineraryFromCity] Querying places:', q, 'API_BASE:', API_BASE);
-    const res = await fetch(`${API_BASE}/places/search?query=${encodeURIComponent(q)}&limit=8`, { headers });
+    const res = await fetch(`${API_BASE}/api/places/search?query=${encodeURIComponent(q)}&limit=8`, { headers });
     if (res.ok) {
       const json = await res.json();
       if (json?.items?.length) {

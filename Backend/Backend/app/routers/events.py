@@ -47,7 +47,7 @@ cache30m = SimpleCache(30)
 
 # ✅ Settings functions
 def get_eventbrite_api_key():
-    return os.getenv("EVENTBRITE_API_KEY", "your_api_key_here")
+    return os.getenv("EVENTBRITE_API_KEY", "")
 
 def get_eventbrite_base_url():
     return "https://www.eventbriteapi.com/v3"

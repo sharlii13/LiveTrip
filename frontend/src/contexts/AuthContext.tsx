@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { API_BASE } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 
 interface User {
@@ -35,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch("/api/auth/me", {
+      const response = await fetch(API_BASE + "/api/auth/me", {
         credentials: "include",
       });
       const data = await response.json();
@@ -55,12 +56,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = () => {
     // Direct redirect to Google OAuth - let the browser handle it
-    window.location.href = "/api/auth/google";
+    window.location.href = API_BASE + "/api/auth/google";
   };
 
   const logout = async () => {
     try {
-      const response = await fetch("/api/auth/logout", {
+      const response = await fetch(API_BASE + "/api/auth/logout", {
         method: "POST",
         credentials: "include",
       });

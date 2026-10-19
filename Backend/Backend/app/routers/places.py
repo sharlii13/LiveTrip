@@ -46,7 +46,7 @@ cache30m = SimpleCache(30)
 
 # ✅ Settings functions
 def get_google_maps_api_key():
-    return os.getenv("GOOGLE_MAPS_API_KEY", "AIzaSyBvOkBvKjhL1Q2QW3XyQr8nZjJjQ9QW8k4")
+    return os.getenv("GOOGLE_MAPS_API_KEY", "")
 
 def get_google_places_base_url():
     return "https://maps.googleapis.com/maps/api/place"

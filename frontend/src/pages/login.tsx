@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_BASE } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +20,7 @@ export default function LoginPage() {
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch("/api/auth/me");
+      const response = await fetch(API_BASE + "/api/auth/me");
       const data = await response.json();
       
       if (data.user) {
@@ -36,12 +37,12 @@ export default function LoginPage() {
     setError(null);
     
     // Direct redirect to Google OAuth - let the browser handle it
-    window.location.href = "/api/auth/google";
+    window.location.href = API_BASE + "/api/auth/google";
   };
 
   const handleLogout = async () => {
     try {
-      const response = await fetch("/api/auth/logout", {
+      const response = await fetch(API_BASE + "/api/auth/logout", {
         method: "POST",
         credentials: "include",
       });

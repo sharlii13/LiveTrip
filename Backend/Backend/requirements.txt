@@ -38,3 +38,7 @@ langdetect>=1.0.9
 
 # Additional packages that might be needed
 email-validator>=2.0.0
+
+# Root multi-day planner (app/rootplan)
+ortools==9.12.4544
+aiohttp>=3.9.1

@@ -80,7 +80,7 @@ class EmergencyContactCreate(BaseModel):
     contact_relationship: ContactRelationship = Field(ContactRelationship.EMERGENCY_CONTACT, description="Relationship to user")
     email: Optional[str] = Field(None, description="Email address")
     is_primary: bool = Field(False, description="Primary emergency contact")
-    notification_preference: str = Field("both", regex="^(sms|call|both)$", description="How to contact")
+    notification_preference: str = Field("both", pattern="^(sms|call|both)$", description="How to contact")
 
 class LocationShare(BaseModel):
     latitude: float = Field(..., ge=-90, le=90)

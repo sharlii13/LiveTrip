@@ -64,7 +64,7 @@ class ScheduleAlert(BaseModel):
 class TrafficAlert(BaseModel):
     route: str = Field(..., min_length=1, max_length=200)
     delay_minutes: int = Field(0, ge=0)
-    congestion_level: Optional[str] = Field("medium", regex="^(light|medium|heavy|severe)$")
+    congestion_level: Optional[str] = Field("medium", pattern="^(light|medium|heavy|severe)$")
     alternative_route: Optional[str] = Field(None, description="Suggested alternative")
 
 # ✅ ENHANCED SERVICE WITH MORE FEATURES
