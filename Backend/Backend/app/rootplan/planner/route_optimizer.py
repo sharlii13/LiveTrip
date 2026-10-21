@@ -93,11 +93,11 @@ class RouteOptimizer:
             await cache_distance_matrix(locations, matrix.model_dump(), mode)
             return matrix
         except Exception as e:
-            logger.error(f"Falling back to mock distance matrix: {e}")
-            # Fallback to mock distance matrix as a last resort
-            matrix = get_mock_distance_matrix(locations)
-            await cache_distance_matrix(locations, matrix.model_dump(), mode)
-            return matrix
+            logger.error(f"Falling back to estimated distance matrix: {e}")
+            # Fallback to estimated distances; not cached so later requests retry Google
+            from app.rootplan.services.google_distance import mark_distance_estimate
+            mark_distance_estimate()
+            return get_mock_distance_matrix(locations)
     
     def create_data_model(self, selected_pois: List[ScoredPOI], 
                          distance_matrix: DistanceMatrix,

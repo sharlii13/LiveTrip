@@ -10,6 +10,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from app.rootplan.api.itinerary_routes import plan_multi_day as _plan_multi_day
+from app.rootplan.services.google_distance import distance_source
 
 router = APIRouter(prefix="/api/itinerary", tags=["itinerary"])
 
@@ -42,6 +43,8 @@ def _to_frontend_day(day: dict, index: int) -> dict:
 @router.post("/plan-multi-day", summary="Plan Multi-Day Itinerary")
 async def plan_multi_day(request: Request):
     payload = await request.json()
+    state = {"estimated": False}
+    distance_source.set(state)
     result = await _plan_multi_day(payload)
     if result.get("status") != "success":
         return JSONResponse(status_code=400, content={"message": result.get("message", "Planning failed")})
@@ -61,5 +64,9 @@ async def plan_multi_day(request: Request):
             "categories_distribution": dict(all_categories),
             "unassigned_pois": [],
         },
-        "metadata": {"last_updated": result["data"].get("last_updated")},
+        "metadata": {
+            "last_updated": result["data"].get("last_updated"),
+            "distance_source": "estimate" if state["estimated"] else "google",
+            **({"warning": "Google distance data was unavailable; travel times are estimates."} if state["estimated"] else {}),
+        },
     }

@@ -6,11 +6,22 @@ import asyncio
 import logging
 import os
 import json
+from contextvars import ContextVar
 from typing import List, Dict, Any, Optional, Tuple
 import aiohttp
 from enum import Enum
 
 logger = logging.getLogger(__name__)
+
+# Per-request state; the endpoint sets it, fallbacks mark it when travel times are estimated
+distance_source: ContextVar[dict] = ContextVar("distance_source")
+
+
+def mark_distance_estimate() -> None:
+    state = distance_source.get(None)
+    if state is not None:
+        state["estimated"] = True
+
 
 ROUTES_MATRIX_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
 ROUTES_TRAVEL_MODE = {"driving": "DRIVE", "walking": "WALK", "bicycling": "BICYCLE", "transit": "TRANSIT"}

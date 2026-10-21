@@ -139,10 +139,11 @@ class MultiDayRouteOptimizer:
             await cache_distance_matrix(locations, dm.model_dump(), mode)
             return durations_min
         except Exception as e:
-            logger.error(f"Falling back to mock distance matrix for multi-day: {e}")
-            matrix = get_mock_distance_matrix(locations)
-            await cache_distance_matrix(locations, matrix.model_dump(), mode)
-            return matrix.durations
+            logger.error(f"Falling back to estimated distance matrix for multi-day: {e}")
+            # Estimated durations; not cached so later requests retry Google
+            from app.rootplan.services.google_distance import mark_distance_estimate
+            mark_distance_estimate()
+            return get_mock_distance_matrix(locations).durations
     
     def create_vrptw_data_model(self, day_pois: List[ScoredPOIForMultiDay],
                                start_location: Location, request: MultiDayPlanRequest,
