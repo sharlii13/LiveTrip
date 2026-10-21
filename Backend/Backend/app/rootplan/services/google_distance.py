@@ -12,6 +12,9 @@ from enum import Enum
 
 logger = logging.getLogger(__name__)
 
+ROUTES_MATRIX_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
+ROUTES_TRAVEL_MODE = {"driving": "DRIVE", "walking": "WALK", "bicycling": "BICYCLE", "transit": "TRANSIT"}
+
 
 class TravelMode(str, Enum):
     """Travel modes supported by Google Distance Matrix API"""
@@ -104,7 +107,6 @@ class GoogleDistanceService:
     
     def __init__(self):
         self.api_key = os.getenv("GOOGLE_DISTANCE_MATRIX_API_KEY") or os.getenv("GOOGLE_PLACES_API_KEY")
-        self.base_url = "https://maps.googleapis.com/maps/api/distancematrix/json"
         self.session: Optional[aiohttp.ClientSession] = None
         
         if not self.api_key or self.api_key in ["your_google_distance_matrix_api_key_here", "your_google_places_api_key_here"]:
@@ -145,172 +147,47 @@ class GoogleDistanceService:
         """
         if not self.api_key:
             raise ValueError("Google Distance Matrix API key required. No mock data allowed.")
-        
-        try:
-            # Format coordinates
-            origin_strings = [f"{lat},{lng}" for lat, lng in origins]
-            dest_strings = [f"{lat},{lng}" for lat, lng in destinations]
-            
-            # Build parameters
-            params = {
-                "origins": "|".join(origin_strings),
-                "destinations": "|".join(dest_strings),
-                "mode": mode.value,
-                "key": self.api_key,
-                "units": "metric"
-            }
-            
-            # Add traffic parameters for driving mode
-            if mode == TravelMode.DRIVING and departure_time:
-                params["departure_time"] = departure_time
-                params["traffic_model"] = traffic_model.value
-            
-            # Make API call
-            session = await self._get_session()
-            async with session.get(self.base_url, params=params) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    
-                    if data.get("status") == "OK":
-                        logger.info(f"Distance matrix calculated for {len(origins)} origins and {len(destinations)} destinations")
-                        return DistanceMatrixResult(origin_strings, dest_strings, data)
-                    else:
-                        logger.error(f"Distance Matrix API error: {data.get('status')}")
-                        return self._mock_distance_matrix(origins, destinations, mode)
-                else:
-                    logger.error(f"Distance Matrix API HTTP error: {response.status}")
-                    return self._mock_distance_matrix(origins, destinations, mode)
-            
-        except Exception as e:
-            logger.error(f"Error calling Distance Matrix API: {e}")
-            return self._mock_distance_matrix(origins, destinations, mode)
-    
-    def _mock_distance_matrix(
-        self, 
-        origins: List[Tuple[float, float]], 
-        destinations: List[Tuple[float, float]], 
-        mode: TravelMode
-    ) -> DistanceMatrixResult:
-        """Generate mock distance matrix for development"""
-        
-        def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-            """Calculate haversine distance between two points"""
-            import math
-            
-            # Convert to radians
-            lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
-            
-            # Haversine formula
-            dlat = lat2 - lat1
-            dlon = lon2 - lon1
-            a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-            c = 2 * math.asin(math.sqrt(a))
-            r = 6371000  # Earth radius in meters
-            
-            return c * r
-        
-        def estimate_duration(distance_m: float, mode: TravelMode) -> int:
-            """Estimate duration based on distance and mode"""
-            if mode == TravelMode.WALKING:
-                # Walking: ~5 km/h
-                return int(distance_m / 1.4)  # m/s
-            elif mode == TravelMode.BICYCLING:
-                # Bicycling: ~15 km/h
-                return int(distance_m / 4.2)  # m/s
-            elif mode == TravelMode.TRANSIT:
-                # Transit: ~25 km/h average (including stops)
-                return int(distance_m / 6.9)  # m/s
-            else:  # DRIVING
-                # Driving: ~30 km/h in city
-                return int(distance_m / 8.3)  # m/s
-        
-        # Generate mock results
-        rows = []
+
+        def waypoint(lat: float, lng: float) -> Dict[str, Any]:
+            return {"waypoint": {"location": {"latLng": {"latitude": lat, "longitude": lng}}}}
+
+        # Routes API computeRouteMatrix (replaces the legacy Distance Matrix API)
+        body: Dict[str, Any] = {
+            "origins": [waypoint(lat, lng) for lat, lng in origins],
+            "destinations": [waypoint(lat, lng) for lat, lng in destinations],
+            "travelMode": ROUTES_TRAVEL_MODE[mode.value],
+        }
+        if mode == TravelMode.DRIVING:
+            body["routingPreference"] = "TRAFFIC_AWARE"
+        headers = {
+            "X-Goog-Api-Key": self.api_key,
+            "X-Goog-FieldMask": "originIndex,destinationIndex,duration,distanceMeters,condition",
+        }
+
+        session = await self._get_session()
+        async with session.post(ROUTES_MATRIX_URL, json=body, headers=headers) as response:
+            data = await response.json(content_type=None)
+            if response.status != 200:
+                err = data[0] if isinstance(data, list) and data else data
+                message = err.get("error", {}).get("message", f"HTTP {response.status}")
+                raise ValueError(f"Routes API error: {message}")
+
+        # Reshape into the legacy rows/elements layout that DistanceMatrixResult reads
+        elements = [[{"status": "ZERO_RESULTS"} for _ in destinations] for _ in origins]
+        for item in data:
+            i, j = item.get("originIndex", 0), item.get("destinationIndex", 0)
+            if item.get("condition") == "ROUTE_EXISTS":
+                seconds = int(item.get("duration", "0s").rstrip("s"))
+                element = {"status": "OK", "distance": {"value": item.get("distanceMeters", 0)}, "duration": {"value": seconds}}
+                if mode == TravelMode.DRIVING:
+                    element["duration_in_traffic"] = {"value": seconds}
+                elements[i][j] = element
+        rows = [{"elements": row} for row in elements]
+
         origin_strings = [f"{lat},{lng}" for lat, lng in origins]
         dest_strings = [f"{lat},{lng}" for lat, lng in destinations]
-        
-        for i, (orig_lat, orig_lng) in enumerate(origins):
-            elements = []
-            
-            for j, (dest_lat, dest_lng) in enumerate(destinations):
-                if orig_lat == dest_lat and orig_lng == dest_lng:
-                    # Same location
-                    elements.append({
-                        "status": "OK",
-                        "distance": {"text": "0 m", "value": 0},
-                        "duration": {"text": "0 mins", "value": 0}
-                    })
-                else:
-                    # Calculate distance and duration
-                    distance = int(haversine_distance(orig_lat, orig_lng, dest_lat, dest_lng))
-                    duration = estimate_duration(distance, mode)
-                    
-                    # Add some randomness to make it more realistic
-                    distance_var = int(distance * (0.9 + 0.2 * (hash(f"{i}{j}") % 100) / 100))
-                    duration_var = int(duration * (0.8 + 0.4 * (hash(f"{j}{i}") % 100) / 100))
-                    
-                    elements.append({
-                        "status": "OK",
-                        "distance": {
-                            "text": f"{distance_var/1000:.1f} km" if distance_var >= 1000 else f"{distance_var} m",
-                            "value": distance_var
-                        },
-                        "duration": {
-                            "text": f"{duration_var//60} mins" if duration_var >= 60 else f"{duration_var} secs",
-                            "value": duration_var
-                        }
-                    })
-            
-            rows.append({"elements": elements})
-        
-        mock_result = {
-            "status": "OK",
-            "origin_addresses": origin_strings,
-            "destination_addresses": dest_strings,
-            "rows": rows
-        }
-        
-        return DistanceMatrixResult(origin_strings, dest_strings, mock_result)
-    
-    async def get_travel_time(
-        self, 
-        origin: Tuple[float, float], 
-        destination: Tuple[float, float], 
-        mode: TravelMode = TravelMode.DRIVING
-    ) -> Optional[int]:
-        """
-        Get travel time between two points
-        
-        Args:
-            origin: (lat, lng) tuple for starting point
-            destination: (lat, lng) tuple for destination
-            mode: Travel mode
-            
-        Returns:
-            Travel time in seconds, or None if not available
-        """
-        result = await self.get_distance_matrix([origin], [destination], mode)
-        return result.get_duration(0, 0)
-    
-    async def get_travel_distance(
-        self, 
-        origin: Tuple[float, float], 
-        destination: Tuple[float, float], 
-        mode: TravelMode = TravelMode.DRIVING
-    ) -> Optional[int]:
-        """
-        Get travel distance between two points
-        
-        Args:
-            origin: (lat, lng) tuple for starting point
-            destination: (lat, lng) tuple for destination
-            mode: Travel mode
-            
-        Returns:
-            Travel distance in meters, or None if not available
-        """
-        result = await self.get_distance_matrix([origin], [destination], mode)
-        return result.get_distance(0, 0)
+        logger.info(f"Route matrix calculated for {len(origins)} origins and {len(destinations)} destinations")
+        return DistanceMatrixResult(origin_strings, dest_strings, {"status": "OK", "rows": rows})
 
 
 # Global instance

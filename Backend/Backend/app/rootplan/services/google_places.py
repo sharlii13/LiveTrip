@@ -11,6 +11,13 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+PLACES_NEW_BASE_URL = "https://places.googleapis.com/v1"
+PLACES_FIELD_MASK = ",".join([
+    "places.id", "places.displayName", "places.formattedAddress", "places.location",
+    "places.rating", "places.userRatingCount", "places.types", "places.regularOpeningHours",
+    "places.websiteUri", "places.nationalPhoneNumber",
+])
+
 
 class PlaceDetails(BaseModel):
     """Place details from Google Places API"""
@@ -34,7 +41,6 @@ class GooglePlacesService:
     
     def __init__(self):
         self.api_key = os.getenv("GOOGLE_PLACES_API_KEY")
-        self.base_url = "https://maps.googleapis.com/maps/api/place"
         self.session: Optional[aiohttp.ClientSession] = None  # deprecated; using per-call sessions to avoid loop issues
         
         if not self.api_key or self.api_key == "your_google_places_api_key_here":
@@ -133,99 +139,71 @@ class GooglePlacesService:
             raise ValueError(f"Failed to search places using Google Places API: {e}. Real-time Google Places API key required.")
     
     async def _text_search(self, query: str, location: Optional[Tuple[float, float]]) -> List[PlaceDetails]:
-        """Perform Google Places text search"""
-        url = f"{self.base_url}/textsearch/json"
-        
-        params = {
-            "query": query,
-            "key": self.api_key
-        }
-        
+        """Places API (New) text search"""
+        body: Dict[str, Any] = {"textQuery": query, "maxResultCount": 20}
         if location:
-            params["location"] = f"{location[0]},{location[1]}"
-            params["radius"] = "10000"
-        
-        places = []
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    for result in data.get("results", []):
-                        place = self._parse_place_result(result)
-                        if place:
-                            places.append(place)
-        
-        return places
-    
+            body["locationBias"] = {"circle": {"center": {"latitude": location[0], "longitude": location[1]}, "radius": 10000.0}}
+        return await self._search("places:searchText", body)
+
     async def _nearby_search(self, location: Tuple[float, float], radius: int) -> List[PlaceDetails]:
-        """Perform Google Places nearby search"""
-        url = f"{self.base_url}/nearbysearch/json"
-        
-        params = {
-            "location": f"{location[0]},{location[1]}",
-            "radius": str(radius),
-            "type": "tourist_attraction|museum|park|restaurant|shopping_mall",
-            "key": self.api_key
+        """Places API (New) nearby search"""
+        body = {
+            "includedTypes": ["tourist_attraction", "museum", "park", "restaurant", "shopping_mall"],
+            "maxResultCount": 20,
+            "locationRestriction": {"circle": {"center": {"latitude": location[0], "longitude": location[1]}, "radius": float(radius)}},
         }
-        
-        places = []
+        return await self._search("places:searchNearby", body)
+
+    async def _search(self, endpoint: str, body: Dict[str, Any]) -> List[PlaceDetails]:
+        """POST to Places API (New); raises with Google's message so the caller can show it"""
+        headers = {
+            "X-Goog-Api-Key": self.api_key,
+            "X-Goog-FieldMask": PLACES_FIELD_MASK,
+        }
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    for result in data.get("results", []):
-                        place = self._parse_place_result(result)
-                        if place:
-                            places.append(place)
-        
-        return places
-    
+            async with session.post(f"{PLACES_NEW_BASE_URL}/{endpoint}", json=body, headers=headers) as response:
+                data = await response.json(content_type=None)
+                if response.status != 200:
+                    message = data.get("error", {}).get("message", f"HTTP {response.status}")
+                    raise ValueError(f"Google Places API error: {message}")
+        return [p for p in (self._parse_place_result(r) for r in data.get("places", [])) if p]
+
     def _parse_place_result(self, result: Dict[str, Any]) -> Optional[PlaceDetails]:
-        """Parse a place result from Google Places API"""
+        """Parse a Places API (New) place"""
         try:
-            geometry = result.get("geometry", {})
-            location = geometry.get("location", {})
-            
-            if not location.get("lat") or not location.get("lng"):
+            location = result.get("location") or {}
+            if location.get("latitude") is None or location.get("longitude") is None:
                 return None
-            
-            # Get opening hours
+
+            hours = result.get("regularOpeningHours")
             opening_hours = None
-            if result.get("opening_hours"):
+            if hours:
                 opening_hours = {
-                    "open_now": result["opening_hours"].get("open_now"),
-                    "periods": result["opening_hours"].get("periods", []),
-                    "weekday_text": result["opening_hours"].get("weekday_text", [])
+                    "open_now": hours.get("openNow"),
+                    "periods": hours.get("periods", []),
+                    # New API uses narrow no-break spaces before AM/PM; the planner parses plain spaces
+                    "weekday_text": [d.replace(" ", " ").replace(" ", " ") for d in hours.get("weekdayDescriptions", [])],
                 }
-            
-            # Get photos
-            photos = []
-            if result.get("photos"):
-                for photo in result["photos"][:3]:  # Limit to 3 photos
-                    if photo.get("photo_reference"):
-                        photo_url = f"{self.base_url}/photo?maxwidth=400&photoreference={photo['photo_reference']}&key={self.api_key}"
-                        photos.append(photo_url)
-            
+
             return PlaceDetails(
-                place_id=result.get("place_id", ""),
-                name=result.get("name", "Unknown"),
-                formatted_address=result.get("formatted_address", ""),
-                lat=float(location["lat"]),
-                lng=float(location["lng"]),
+                place_id=result.get("id", ""),
+                name=(result.get("displayName") or {}).get("text", "Unknown"),
+                formatted_address=result.get("formattedAddress", ""),
+                lat=float(location["latitude"]),
+                lng=float(location["longitude"]),
                 rating=float(result.get("rating", 4.0)),
-                user_ratings_total=int(result.get("user_ratings_total", 0)),
-                price_level=result.get("price_level"),
+                user_ratings_total=int(result.get("userRatingCount", 0)),
+                price_level=None,  # shortcut: New API returns price as an enum string, not 0-4; not used by the planner, upgrade if price filtering is added
                 types=result.get("types", []),
                 opening_hours=opening_hours,
-                photos=photos,
-                website=result.get("website"),
-                phone_number=result.get("formatted_phone_number")
+                photos=[],  # shortcut: photo URLs need the New photo media endpoint; not used by the planner yet
+                website=result.get("websiteUri"),
+                phone_number=result.get("nationalPhoneNumber"),
             )
-            
+
         except Exception as e:
             logger.error(f"Error parsing place result: {e}")
             return None
-    
 
 
 # Global instance
