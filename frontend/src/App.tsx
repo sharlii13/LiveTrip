@@ -16,7 +16,8 @@ import Destination from "@/pages/destination";
 import Profile from "@/pages/profile";
 import Login from "@/pages/login";
 import TripPlanning from "@/pages/trip-planning";
-import Itinerary from "@/pages/itinerary";
+import { Navigate } from "react-router-dom";
+import { recentTrips } from "@/lib/livetrip";
 import About from "@/pages/about";
 import HealthPanel from "@/components/HealthPanel";
 import Navbar from "@/components/navbar";
@@ -40,6 +41,12 @@ import Wishlist from "@/pages/wishlist";
 import TravelHistory from "@/pages/history";
 import Assistant from "@/pages/assistant";
 
+/** The old /itinerary link opens the most recent live trip (or the trip list). */
+function LatestItinerary() {
+  const id = recentTrips()[0] || localStorage.getItem("currentItineraryId");
+  return <Navigate to={id ? `/trips/${id}` : "/trips"} replace />;
+}
+
 function Router() {
   return (
     <div className="min-h-screen bg-background">
@@ -49,7 +56,7 @@ function Router() {
         <Route path="/login" element={<Login />} />
         <Route path="/search" element={<Search />} />
         <Route path="/trip-planning" element={<TripPlanning />} />
-        <Route path="/itinerary" element={<Itinerary />} />
+        <Route path="/itinerary" element={<LatestItinerary />} />
         <Route path="/about" element={<About />} />
         <Route path="/map" element={<Map />} />
         <Route path="/feedback" element={<Feedback />} />

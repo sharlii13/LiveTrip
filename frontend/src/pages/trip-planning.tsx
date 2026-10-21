@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/select";
 import { useTripPlanning } from "@/contexts/TripPlanningContext";
 import LiveTripLogo from "@/components/LiveTripLogo";
-import { api, localDate as toLocalDate } from "@/lib/livetrip";
+import { api, localDate as toLocalDate, rememberTrip } from "@/lib/livetrip";
+import PlanningOverlay from "@/components/livetrip/PlanningOverlay";
 
 export default function TripPlanning() {
   const navigate = useNavigate();
@@ -125,8 +126,9 @@ export default function TripPlanning() {
         if (!selectedDates.from || !selectedDates.to || !tripData.destination) {
           throw new Error('Missing required trip information');
         }
+        // the walking/transit picker only shows for multi-day trips; otherwise assume car/taxi
         const transport = selectedTransport
-          || (travelMode === 'walking' ? 'walking' : travelMode === 'transit' ? 'public-transport' : 'car');
+          || (!isMultiDay ? 'car' : travelMode === 'walking' ? 'walking' : travelMode === 'transit' ? 'public-transport' : 'car');
         const trip = await api<{ id: string }>('/api/trips', {
           method: 'POST',
           json: {
@@ -144,6 +146,7 @@ export default function TripPlanning() {
           },
         });
         updateTripData({ ...updatedTripData, itineraryId: trip.id, backendItinerary: trip } as any);
+        rememberTrip(trip.id);
         navigate(`/trips/${trip.id}`);
       } catch (apiError) {
         alert(`Could not create the itinerary: ${(apiError as Error).message}`);
@@ -166,6 +169,7 @@ export default function TripPlanning() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
+      <PlanningOverlay open={submitting} destination={tripData.destination} />
       <div className="max-w-4xl mx-auto px-4">
         <Card className="w-full">
           <CardHeader>
@@ -631,11 +635,6 @@ export default function TripPlanning() {
                 {tripStep < 8 && <ChevronRight className="w-4 h-4 ml-2" />}
               </Button>
             </div>
-            {submitting && (
-              <p className="text-sm text-muted-foreground text-right pt-2" role="status">
-                Finding places, planning routes and picking restaurants. Longer trips can take up to a minute.
-              </p>
-            )}
           </CardContent>
         </Card>
       </div>

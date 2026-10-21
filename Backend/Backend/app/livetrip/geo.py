@@ -69,13 +69,35 @@ async def search_places(query: str, near: Optional[Tuple[float, float]] = None, 
     if hit and hit[0] > time.monotonic():
         task = hit[1]
     else:
-        task = asyncio.ensure_future(_google_text_search(query, near))
+        task = asyncio.ensure_future(_text_search_any(query, near))
         _search_cache[key] = (time.monotonic() + _SEARCH_TTL_S, task)
     try:
         return [dict(p) for p in (await asyncio.shield(task))[:limit]]  # copies: callers may annotate them
     except Exception:
         _search_cache.pop(key, None)  # never cache failures
         raise
+
+
+GOOGLE_RETRY_AFTER_S = 30 * 60
+_google_down_until = 0.0
+
+
+async def _text_search_any(query: str, near: Optional[Tuple[float, float]]) -> List[Dict]:
+    """Google first; when it is out of quota or has no key, OpenStreetMap (and skip Google for a while)."""
+    global _google_down_until
+    if time.monotonic() >= _google_down_until:
+        try:
+            return await _google_text_search(query, near)
+        except HTTPException as e:
+            if e.status_code not in (429, 503):
+                raise
+            _google_down_until = time.monotonic() + GOOGLE_RETRY_AFTER_S
+    from . import osm
+    return await osm.search(query, near)
+
+
+def google_available() -> bool:
+    return time.monotonic() >= _google_down_until
 
 
 async def _google_text_search(query: str, near: Optional[Tuple[float, float]]) -> List[Dict]:
@@ -94,7 +116,7 @@ async def _google_text_search(query: str, near: Optional[Tuple[float, float]]) -
             "name": p.name, "place_id": p.place_id, "address": p.formatted_address,
             "lat": p.lat, "lng": p.lng, "rating": p.rating, "rating_count": p.user_ratings_total,
             "types": p.types, "category": category, "outdoor": category in OUTDOOR_CATEGORIES,
-            "hours": (p.opening_hours or {}).get("weekday_text", []),
+            "hours": (p.opening_hours or {}).get("weekday_text", []), "source": "google",
         })
     return out
 

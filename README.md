@@ -11,8 +11,10 @@
    ```
    GOOGLE_PLACES_API_KEY=your_key
    ```
-   The key needs **Places API (New)** enabled. Travel times use the **Routes API**, which needs billing
-   enabled on the Google Cloud project; without it, times are estimated and the API says so.
+   The key needs **Places API (New)** enabled. If there is no key, or Google refuses (for example the
+   free daily quota is used up), LiveTrip switches automatically to free open data (Wikipedia for sights,
+   OpenStreetMap/Nominatim for restaurants and hotels) and the trip page says so. Travel times use the
+   **Routes API**, which needs billing on the Google Cloud project; without it, times are estimated.
    Weather comes from Open-Meteo and needs no key. Then start the server from `Backend/Backend/app`:
    ```
    python -m uvicorn main:app --port 8000

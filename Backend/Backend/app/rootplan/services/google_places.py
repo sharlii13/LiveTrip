@@ -191,7 +191,7 @@ class GooglePlacesService:
                 formatted_address=result.get("formattedAddress", ""),
                 lat=float(location["latitude"]),
                 lng=float(location["longitude"]),
-                rating=float(result.get("rating", 4.0)),
+                rating=float(result.get("rating", 0)),  # 0 = no rating yet; never invent one
                 user_ratings_total=int(result.get("userRatingCount", 0)),
                 price_level=None,  # shortcut: New API returns price as an enum string, not 0-4; not used by the planner, upgrade if price filtering is added
                 types=result.get("types", []),

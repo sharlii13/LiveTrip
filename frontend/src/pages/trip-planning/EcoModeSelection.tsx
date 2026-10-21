@@ -7,12 +7,15 @@ import { Switch } from '@/components/ui/switch';
 import { Leaf, Car, Plane, Train, Bus, Bike, Check } from 'lucide-react';
 import { useTripPlanning } from '@/contexts/TripPlanningContext';
 import ProgressIndicator from '@/components/ProgressIndicator';
+import PlanningOverlay from "@/components/livetrip/PlanningOverlay";
+import { rememberTrip } from "@/lib/livetrip";
 
 const EcoModeSelection: React.FC = () => {
   const navigate = useNavigate();
   const { tripData, updateTripData, currentStep, totalSteps } = useTripPlanning();
   const [ecoMode, setEcoMode] = useState<boolean>(tripData.ecoMode);
   const [selectedTransport, setSelectedTransport] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
 
   const transportOptions = [
     {
@@ -74,11 +77,13 @@ const EcoModeSelection: React.FC = () => {
   };
 
   const handleNext = async () => {
+    if (submitting) return;
     updateTripData({
       ecoMode: ecoMode,
     });
 
     // Submit trip data to backend
+    setSubmitting(true);
     try {
       const response = await fetch('/api/trips', {
         method: 'POST',
@@ -95,6 +100,7 @@ const EcoModeSelection: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
+        rememberTrip(result.id);
         updateTripData({ ecoMode, itineraryId: String(result.id), backendItinerary: result });
         navigate('/trip-planning/summary');
       } else {
@@ -102,7 +108,9 @@ const EcoModeSelection: React.FC = () => {
         alert(err.detail || 'Failed to create the trip. Please try again.');
       }
     } catch (error) {
-      console.error('Error creating trip:', error);
+      alert('Could not reach the LiveTrip server. Check that the backend is running and try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -119,6 +127,7 @@ const EcoModeSelection: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <PlanningOverlay open={submitting} destination={tripData.destination} />
       <ProgressIndicator 
         currentStep={currentStep} 
         totalSteps={totalSteps} 
@@ -265,11 +274,12 @@ const EcoModeSelection: React.FC = () => {
                 Back
               </Button>
               
-              <Button 
+              <Button
                 onClick={handleNext}
+                disabled={submitting}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                Create Trip Plan
+                {submitting ? 'Planning your trip...' : 'Create Trip Plan'}
               </Button>
             </div>
           </CardContent>

@@ -64,8 +64,8 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
 
 @router.get("/auth/me")
 def me(user: Optional[User] = Depends(optional_user), db: Session = Depends(get_db)):
-    if user is None:
-        return JSONResponse(status_code=401, content={"user": None, "detail": "Not authenticated"})
+    if user is None:  # signed out is a normal state, not an error (a 401 here logs red errors on every page)
+        return {"user": None}
     return {"user": user_public(db, user)}
 
 

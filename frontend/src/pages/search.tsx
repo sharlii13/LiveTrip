@@ -21,6 +21,8 @@ import SearchFilters from "@/components/search-filters";
 import InteractiveMap from "@/components/InteractiveMap";
 import { useTripPlanning } from "@/contexts/TripPlanningContext";
 import type { Destination } from "@shared/schema";
+import PlanningOverlay from "@/components/livetrip/PlanningOverlay";
+import { rememberTrip } from "@/lib/livetrip";
 
 export default function SearchPage() {
   const navigate = useNavigate();
@@ -231,6 +233,7 @@ export default function SearchPage() {
         const result = await response.json();
         setShowTripPlanning(false);
         setTripStep(1);
+        rememberTrip(result.id);
         navigate(`/trips/${result.id}`);
       } else {
         console.error('Failed to create trip');
@@ -258,6 +261,7 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <PlanningOverlay open={submitting} destination={selectedDestination ?? undefined} />
     <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Search Header with Video */}
       <div className="mb-8">

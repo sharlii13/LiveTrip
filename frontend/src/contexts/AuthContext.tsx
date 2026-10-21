@@ -1,6 +1,18 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "@/lib/livetrip";
+import { api, forgetRecentTrips, recentTrips } from "@/lib/livetrip";
+
+/** Move trips planned before signing in onto the account (best effort). */
+async function claimRecentTrips() {
+  const ids = recentTrips().map(Number).filter(Boolean);
+  if (!ids.length) return;
+  try {
+    await api("/api/trips/claim", { method: "POST", json: { ids } });
+    forgetRecentTrips();
+  } catch {
+    /* keep them for the next sign-in */
+  }
+}
 
 export interface User {
   id: string;
@@ -36,8 +48,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refresh = async () => {
     try {
-      const data = await api<{ user: User }>("/api/auth/me");
+      const data = await api<{ user: User | null }>("/api/auth/me");
       setUser(data.user);
+      if (data.user) claimRecentTrips();
     } catch {
       setUser(null);
     } finally {
@@ -52,11 +65,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     const data = await api<{ user: User }>("/api/auth/login", { method: "POST", json: { email, password } });
     setUser(data.user);
+    await claimRecentTrips();
   };
 
   const signUp = async (name: string, email: string, password: string) => {
     const data = await api<{ user: User }>("/api/auth/register", { method: "POST", json: { name, email, password } });
     setUser(data.user);
+    await claimRecentTrips();
   };
 
   const login = () => navigate("/login");

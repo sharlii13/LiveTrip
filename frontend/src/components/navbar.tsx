@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import {
-  Heart, User, LogOut, Sun, Moon, Calendar, MapPin, Camera, Trophy, Users, Images, History, Bot, MessageSquare,
+  Heart, User, LogOut, Sun, Moon, Calendar, MapPin, Camera, Trophy, Users, Images, History, Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,7 +33,6 @@ const MENU = [
   { to: "/assistant", label: "Travel assistant", icon: Bot },
   { to: "/rewards", label: "Rewards", icon: Trophy },
   { to: "/groups", label: "Trip groups", icon: Users },
-  { to: "/itinerary", label: "Classic itinerary", icon: MessageSquare },
   { to: "/multi-day-planner", label: "Multi-day planner", icon: MapPin },
 ];
 

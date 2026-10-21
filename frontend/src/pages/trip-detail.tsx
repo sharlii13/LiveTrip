@@ -204,9 +204,9 @@ export default function TripDetail() {
           </div>
         </div>
 
-        {trip.distance_note && (
-          <p className="text-xs text-muted-foreground flex items-center gap-1"><AlertTriangle className="w-3 h-3" />{trip.distance_note}</p>
-        )}
+        {[trip.places_note, trip.distance_note].filter(Boolean).map((note) => (
+          <p key={note} className="text-xs text-muted-foreground flex items-center gap-1"><AlertTriangle className="w-3 h-3 shrink-0" />{note}</p>
+        ))}
 
         {openAlerts.length > 0 && (
           <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/30">

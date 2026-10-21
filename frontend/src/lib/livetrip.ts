@@ -33,6 +33,34 @@ function safeJson(text: string) {
   }
 }
 
+// Trips planned before signing in are remembered on this device and attached to the account at sign-in.
+const RECENT_KEY = "livetrip-recent-trips";
+
+export function rememberTrip(id: string | number) {
+  try {
+    const ids = recentTrips().filter((x) => x !== String(id));
+    localStorage.setItem(RECENT_KEY, JSON.stringify([String(id), ...ids].slice(0, 20)));
+  } catch {
+    /* storage unavailable: the trip is still reachable by its link */
+  }
+}
+
+export function recentTrips(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+export function forgetRecentTrips() {
+  try {
+    localStorage.removeItem(RECENT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /** YYYY-MM-DD in the traveler's own time zone (toISOString would give the UTC date). */
 export function localDate(d: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -100,6 +128,7 @@ export interface Trip {
   version: number;
   distance_source: string;
   distance_note: string;
+  places_note?: string;
   start_location: { lat: number; lng: number };
   user_preferences: Record<string, any>;
   days: { day: number; date: string; time_slots: Slot[]; total_travel_time: number }[];

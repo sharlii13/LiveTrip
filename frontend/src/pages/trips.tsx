@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, localDate, Trip } from "@/lib/livetrip";
+import { api, localDate, recentTrips, rememberTrip, Trip } from "@/lib/livetrip";
+import PlanningOverlay from "@/components/livetrip/PlanningOverlay";
 
 interface TripSummary {
   id: number;
@@ -42,8 +43,18 @@ export default function Trips() {
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) api<TripSummary[]>("/api/trips").then(setTrips).catch(() => setTrips([]));
-    else setTrips([]);
+    if (isAuthenticated) {
+      api<TripSummary[]>("/api/trips").then(setTrips).catch(() => setTrips([]));
+      return;
+    }
+    // signed out: show the trips planned on this device
+    Promise.all(recentTrips().map((id) => api<Trip>(`/api/itinerary/${id}`).catch(() => null))).then((list) =>
+      setTrips(list.filter((t): t is Trip => !!t).map((t) => {
+        const visits = t.days.flatMap((d) => d.time_slots.filter((s) => s.kind === "visit"));
+        return { id: Number(t.id), destination: t.destination, start_date: t.start_date, end_date: t.end_date,
+                 status: t.status, owned: true, visits: visits.length,
+                 completed: visits.filter((s) => s.status === "completed").length };
+      })));
   }, [isAuthenticated]);
 
   const toggle = (i: string) => setInterests((list) => (list.includes(i) ? list.filter((x) => x !== i) : [...list, i]));
@@ -60,6 +71,7 @@ export default function Trips() {
           mustVisit: mustVisit.split(",").map((s) => s.trim()).filter(Boolean),
         },
       });
+      rememberTrip(trip.id);
       navigate(`/trips/${trip.id}`);
     } catch (err) {
       toast({ title: "Could not plan this trip", description: (err as Error).message, variant: "destructive" });
@@ -70,15 +82,16 @@ export default function Trips() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 grid gap-6 lg:grid-cols-5">
+      <PlanningOverlay open={creating} destination={destination} />
       <div className="lg:col-span-3 space-y-4">
         <h1 className="text-3xl font-bold">My trips</h1>
         {!isAuthenticated && (
           <Card><CardContent className="pt-6 text-sm">
-            <Link to="/login?next=/trips" className="text-primary underline">Sign in</Link> to keep your trips, check in at places and earn points. You can still plan a trip without an account.
+            <Link to="/login?next=/trips" className="text-primary underline">Sign in</Link> to keep your trips on every device, check in at places and earn points. Trips you plan now are saved on this device and moved to your account when you sign in.
           </CardContent></Card>
         )}
         {trips === null && <RefreshCw className="w-6 h-6 animate-spin text-primary" />}
-        {trips?.length === 0 && isAuthenticated && <p className="text-muted-foreground">No trips yet. Plan your first one.</p>}
+        {trips?.length === 0 && <p className="text-muted-foreground">No trips yet. Plan your first one with the form.</p>}
         {trips?.map((t) => (
           <Link key={t.id} to={`/trips/${t.id}`}>
             <Card className="hover:shadow-md transition-shadow mb-3">

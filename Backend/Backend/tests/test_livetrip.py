@@ -37,9 +37,9 @@ def test_register_login_me_logout(client, make_user):
     assert client.post("/api/auth/register", json={"name": "X", "email": a.email,
                                                    "password": "travel-pass-1"}).status_code == 409
     a.post("/api/auth/logout")
-    assert a.get("/api/auth/me").status_code == 401
+    assert a.get("/api/auth/me").json() == {"user": None}  # signed out is not an error
     bearer = {"Authorization": f"Bearer {r.json()['token']}"}
-    assert client.get("/api/auth/me", headers=bearer).status_code == 200
+    assert client.get("/api/auth/me", headers=bearer).json()["user"]["name"] == "Asha"
 
 
 def test_profile_update_and_public_view(make_user, client):
@@ -83,6 +83,13 @@ def test_trip_generation_personalised_with_meals(make_user):
     assert any(t["id"] == int(itin["id"]) for t in a.get("/api/trips").json())
 
 
+def test_generated_days_never_run_past_the_evening(make_user):
+    a = make_user()
+    itin = make_trip(a, days=2, transportPreference="walking", pace="fast", interests=["culture", "nature", "shopping"])
+    for slot in visits(itin):
+        assert not slot["overflow"] and slot["end_time"] <= "21:30", slot
+
+
 def test_create_itinerary_frontend_contract(client):
     start = date.today().isoformat()
     r = client.post("/api/itinerary/create", json={
@@ -116,7 +123,7 @@ def test_search_cache_shares_calls_and_forgets_failures(app, monkeypatch):
             raise HTTPException(429, geo.QUOTA_MESSAGE)
         return [{"name": f"{query} {i}"} for i in range(5)]
 
-    monkeypatch.setattr(geo, "_google_text_search", fake_google)
+    monkeypatch.setattr(geo, "_text_search_any", fake_google)  # the provider call the cache wraps
     geo._search_cache.clear()
 
     async def scenario():
@@ -134,6 +141,78 @@ def test_search_cache_shares_calls_and_forgets_failures(app, monkeypatch):
 
     asyncio.run(scenario())
     geo._search_cache.clear()
+
+
+def test_open_data_fallback_when_google_is_out_of_quota(app, monkeypatch):
+    import asyncio
+    from fastapi import HTTPException
+    from livetrip import geo, osm
+    google_calls = {"n": 0}
+
+    async def google_quota(query, near):
+        google_calls["n"] += 1
+        raise HTTPException(429, geo.QUOTA_MESSAGE)
+
+    async def open_data(query, near):
+        return [{"name": "Charminar", "source": "openstreetmap", "category": "history"}]
+
+    monkeypatch.setattr(geo, "_google_text_search", google_quota)
+    monkeypatch.setattr(osm, "search", open_data)
+    monkeypatch.setattr(geo, "_google_down_until", 0.0)
+    geo._search_cache.clear()
+
+    async def scenario():
+        first = await geo.real_search_places("attractions in hyderabad")
+        second = await geo.real_search_places("museums in hyderabad")
+        return first, second
+
+    first, second = asyncio.run(scenario())
+    assert first[0]["source"] == second[0]["source"] == "openstreetmap"
+    assert google_calls["n"] == 1  # after a quota error Google is skipped for a while
+    assert not geo.google_available()
+    geo._search_cache.clear()
+
+
+def test_wikipedia_sights_keep_only_places_to_visit(monkeypatch):
+    import asyncio
+    from livetrip import osm
+
+    osm._wiki_cache.clear()
+
+    async def fake_get(url, params):
+        pages = [
+            ("Golconda Fort", "Fort in Hyderabad, India", 40000),
+            ("Salar Jung Museum", "Art Museum in Hyderabad", 26000),
+            ("Birla Mandir, Hyderabad", "Hindu temple in Telangana", 9000),
+            ("Hussain Sagar", "Lake in Hyderabad", 12000),
+            ("Kacheguda railway station", "Train station in Hyderabad", 9000),
+            ("Osmania General Hospital", "Hospital in Telangana", 12000),
+        ]
+        return {"query": {"pages": [{"pageid": i, "title": t, "description": d, "length": n,
+                                     "coordinates": [{"lat": 17.38 + i / 1000, "lon": 78.48}]}
+                                    for i, (t, d, n) in enumerate(pages)]}}
+
+    monkeypatch.setattr(osm, "_get", fake_get)
+    found = asyncio.run(osm.wikipedia_sights((17.38, 78.48), osm.INTENTS["attractions"][0]))
+    by_name = {p["name"]: p["category"] for p in found}
+    assert by_name == {"Golconda Fort": "history", "Salar Jung Museum": "museum", "Birla Mandir": "religious",
+                       "Hussain Sagar": "nature"}
+    assert all(p["rating"] == 0 for p in found)  # open data has no star ratings; never invent them
+    assert osm.intents_for("pure vegetarian restaurant") == ["food"]
+    assert osm.intents_for("museums and heritage sites in mumbai") == ["museum", "history"]
+    assert osm.intents_for("Charminar, Hyderabad") == []
+    osm._wiki_cache.clear()
+
+
+def test_trips_planned_before_sign_in_are_claimed(client, make_user):
+    anonymous = make_trip(client, days=1)  # no account yet
+    a, b = make_user("Claimer"), make_user("Other")
+    assert anonymous["user_id"] is None
+    r = a.post("/api/trips/claim", json={"ids": [int(anonymous["id"])]}).json()
+    assert r["claimed"] == [int(anonymous["id"])]
+    assert any(t["id"] == int(anonymous["id"]) for t in a.get("/api/trips").json())
+    assert b.post("/api/trips/claim", json={"ids": [int(anonymous["id"])]}).json()["claimed"] == []  # already owned
+    assert b.get(f"/api/itinerary/{anonymous['id']}").status_code == 403
 
 
 def test_other_users_cannot_edit_or_view_private_trip(make_user):

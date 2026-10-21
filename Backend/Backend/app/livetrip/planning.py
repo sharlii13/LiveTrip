@@ -133,10 +133,14 @@ def _parse_date(value: Optional[str], fallback: date) -> date:
 
 
 def _open_close(hours: List[str]) -> Tuple[str, str]:
-    """Parse '9:00 AM – 5:30 PM' from the first weekday line; default 09:00-18:00."""
+    """Parse '9:00 AM – 5:30 PM' (Google) or 'Mo-Su 09:00-17:30' (OpenStreetMap); default 09:00-18:00."""
     for line in hours[:1]:
-        if "24 hours" in line:
+        if "24 hours" in line or "24/7" in line:
             return "00:00", "23:59"
+        osm_times = re.findall(r"\b(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\b", line)
+        if osm_times:
+            h1, m1, h2, m2 = osm_times[0]
+            return f"{h1}:{m1}", ("23:59" if h2 == "24" else f"{h2}:{m2}")
         times = re.findall(r"(\d{1,2}):(\d{2})\s*([AP]M)", line)
         if len(times) >= 2:
             def conv(h, m, ap):
@@ -285,8 +289,9 @@ async def restaurant_options(lat: float, lng: float, food_pref: str) -> List[Dic
     """Restaurants near a stop, best first."""
     veg = (food_pref or "").lower() in VEG_WORDS
     query = "pure vegetarian restaurant" if veg else "popular restaurant"
+    cell = (round(lat / 0.03) * 0.03, round(lng / 0.03) * 0.03)  # ~3 km cells: nearby meals share one search
     try:
-        found = await search_places(query, near=(lat, lng), limit=10)
+        found = await search_places(query, near=cell, limit=20)
     except HTTPException:
         return []
     # nearby first, but accept up to 8 km so stops outside town (forts, lakes) still get a meal suggestion
@@ -321,7 +326,10 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
     queries = [f"top tourist attractions in {destination}"]
     for interest in interests:
         queries += [f"{q} in {destination}" for q in INTEREST_QUERIES.get(interest, [])]
-    results = await asyncio.gather(*[search_places(q, near=center, limit=20) for q in queries[:8]],
+    if days * max_visits > 15:  # one search returns at most 20 places; longer trips need a bigger pool
+        queries += [f"{q} in {destination}" for q in ("museums", "historical places", "parks and gardens", "famous temples")]
+    queries = list(dict.fromkeys(queries))
+    results = await asyncio.gather(*[search_places(q, near=center, limit=20) for q in queries[:10]],
                                    return_exceptions=True)
     pool: Dict[str, Dict] = {}
     for res in results:
@@ -399,6 +407,8 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
             schedule.setdefault(day, []).append(p)
             seen.add(p["name"].lower())
 
+    if any(p.get("source") == "openstreetmap" for p in ranked):
+        prefs = {**prefs, "places_source": "openstreetmap"}
     trip = Trip(owner_id=owner.id if owner else None, destination=destination, start_date=start.isoformat(),
                 end_date=end.isoformat(), start_lat=origin[0], start_lng=origin[1], preferences=json.dumps(prefs),
                 distance_source="estimate" if state["estimated"] else "google")
@@ -436,6 +446,17 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
             meal["position"] = max(i["position"] for i in items if i["day"] == day) + 1
         items.append(meal)
     reflow(items, mode)
+    # a day can't run past 21:30: drop the last stops that don't fit (must-visit places last)
+    forced_names = {p["name"] for p in forced}
+    while True:
+        late = [i for i in items if i.get("overflow") and i["kind"] == "visit"]
+        if not late:
+            break
+        day = late[0]["day"]
+        candidates = [i for i in items if i["day"] == day and i["kind"] == "visit"]
+        drop = max(candidates, key=lambda i: (i["name"] not in forced_names, i["position"]))
+        items.remove(drop)
+        reflow(items, mode)
     save_items(db, trip, items)
     trip.version = 1
     db.commit()
@@ -487,6 +508,8 @@ def itinerary_out(db: Session, trip: Trip, items: Optional[List[Dict]] = None) -
         "start_date": trip.start_date, "end_date": trip.end_date, "status": trip.status, "version": trip.version,
         "distance_source": trip.distance_source,
         "distance_note": "Travel times are estimates (Google Routes unavailable)." if trip.distance_source != "google" else "",
+        "places_note": ("Places come from OpenStreetMap because Google Places was unavailable; star ratings are "
+                        "not shown." if prefs.get("places_source") == "openstreetmap" else ""),
         "start_location": {"lat": trip.start_lat, "lng": trip.start_lng}, "user_preferences": prefs,
         "total_budget": prefs.get("budget") or 0, "days": days,
         "created_at": utc_iso(trip.created_at), "updated_at": utc_iso(trip.updated_at or trip.created_at),
@@ -524,6 +547,20 @@ async def create_itinerary(body: CreateItineraryIn, user: Optional[User] = Depen
     trip = await generate(db, user, body.destination.strip(), start, _parse_date(body.end_date, start), prefs,
                           None, body.must_visit_places)
     return itinerary_out(db, trip)
+
+
+class ClaimIn(BaseModel):
+    ids: List[int] = Field(default_factory=list, max_length=50)
+
+
+@router.post("/trips/claim")
+def claim_trips(body: ClaimIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Attach trips planned before signing in (they have no owner yet) to the signed-in account."""
+    trips = db.query(Trip).filter(Trip.id.in_(body.ids), Trip.owner_id.is_(None)).all()
+    for t in trips:
+        t.owner_id = user.id
+    db.commit()
+    return {"claimed": [t.id for t in trips]}
 
 
 @router.get("/trips")
