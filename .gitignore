@@ -25,3 +25,9 @@ env/
 # OS Files
 .DS_Store
 Thumbs.db
+
+# LiveTrip runtime data
+.livetrip_secret
+Backend/Backend/app/uploads/
+Backend/Backend/app/rootplan/cache/
+.pytest_cache/

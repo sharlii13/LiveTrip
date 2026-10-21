@@ -268,6 +268,10 @@ def safe_import_router(module_name, router_name, enabled_flag_name):
         logger.error(f"❌ {router_name} router error: {e}")
         return False
 
+# LiveTrip features (registered first so they win over older overlapping routes)
+import livetrip
+livetrip.install(app)
+
 # ✅ Import all routers using the enhanced safe import function
 logger.info("🔄 Loading routers...")
 
@@ -515,15 +519,6 @@ async def health_check():
         raise HTTPException(status_code=503, detail="Service unhealthy")
 
 # ✅ Enhanced Smart Chatbot Integration
-# Auth stubs: no login provider is wired yet, so the session is always anonymous
-@app.get("/api/auth/me", summary="Current user", tags=["🏠 Core API"])
-async def auth_me():
-    return JSONResponse(status_code=401, content={"user": None, "detail": "Not authenticated"})
-
-@app.post("/api/auth/logout", summary="Logout", tags=["🏠 Core API"])
-async def auth_logout():
-    return {"success": True}
-
 @app.post("/api/chatbot/quick-suggestion", 
           response_model=ChatbotResponse,
           summary="Quick AI Suggestion",
@@ -663,69 +658,6 @@ class MultiDayPlanResponse(BaseModel):
     last_updated: str
 
 # Multi-day planning: real planner lives in routers/multiday.py
-
-# ✅ Single-Day Itinerary Creation Endpoint (for compatibility)
-@app.post("/api/itinerary/create",
-          summary="Create Single-Day Itinerary",
-          description="Create a basic single-day itinerary (legacy endpoint)",
-          tags=["🧠 Itinerary Optimization"])
-async def create_itinerary(request: dict):
-    """Create a basic single-day itinerary for compatibility with frontend"""
-    try:
-        # Extract basic information from the request
-        destination = request.get('destination', 'Unknown')
-        user_id = request.get('user_id', 'user_123')
-        start_date = request.get('start_date', '2025-10-04')
-        end_date = request.get('end_date', '2025-10-04')
-        
-        # Create a simple itinerary response that matches frontend expectations
-        return {
-            "id": "temp_itinerary_123",
-            "user_id": user_id,
-            "destination": destination,
-            "start_date": start_date,
-            "end_date": end_date,
-            "days": [
-                {
-                    "date": start_date.split('T')[0] if 'T' in start_date else start_date,
-                    "time_slots": [
-                        {
-                            "start_time": "09:00",
-                            "end_time": "10:30",
-                            "activity": {
-                                "id": "activity_1",
-                                "name": f"Explore {destination}",
-                                "description": f"Discover the highlights of {destination}",
-                                "location": {
-                                    "latitude": 0,
-                                    "longitude": 0,
-                                    "address": f"{destination}",
-                                    "city": destination,
-                                    "country": "Unknown"
-                                },
-                                "activity_type": "sightseeing",
-                                "estimated_duration": 90,
-                                "weather_dependent": False,
-                                "booking_required": False
-                            },
-                            "priority": 1,
-                            "flexibility": 1
-                        }
-                    ],
-                    "total_budget": 0,
-                    "total_travel_time": 0
-                }
-            ],
-            "user_preferences": request.get('user_preferences', {}),
-            "total_budget": 0,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
-            "version": 1
-        }
-        
-    except Exception as e:
-        logger.error(f"Error creating basic itinerary: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to create itinerary: {str(e)}")
 
 @app.get("/api/itinerary/multi-day/sample",
          summary="Get Sample Multi-Day Itinerary",

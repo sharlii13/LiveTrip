@@ -116,7 +116,7 @@ class GooglePlacesService:
         
         try:
             # First, try text search
-            places = await self._text_search(query, location)
+            places = await self.text_search(query, location)
             
             # If we have a location, also do a nearby search for more variety
             if location and len(places) < limit:
@@ -138,7 +138,7 @@ class GooglePlacesService:
             logger.error(f"Error searching places for '{query}': {e}")
             raise ValueError(f"Failed to search places using Google Places API: {e}. Real-time Google Places API key required.")
     
-    async def _text_search(self, query: str, location: Optional[Tuple[float, float]]) -> List[PlaceDetails]:
+    async def text_search(self, query: str, location: Optional[Tuple[float, float]]) -> List[PlaceDetails]:
         """Places API (New) text search"""
         body: Dict[str, Any] = {"textQuery": query, "maxResultCount": 20}
         if location:

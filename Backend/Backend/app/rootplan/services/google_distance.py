@@ -175,9 +175,10 @@ class GoogleDistanceService:
             "X-Goog-FieldMask": "originIndex,destinationIndex,duration,distanceMeters,condition",
         }
 
-        session = await self._get_session()
-        async with session.post(ROUTES_MATRIX_URL, json=body, headers=headers) as response:
-            data = await response.json(content_type=None)
+        # A fresh session per call: a shared one breaks when the caller's event loop changes
+        async with aiohttp.ClientSession() as session:
+            async with session.post(ROUTES_MATRIX_URL, json=body, headers=headers) as response:
+                data = await response.json(content_type=None)
             if response.status != 200:
                 err = data[0] if isinstance(data, list) and data else data
                 message = err.get("error", {}).get("message", f"HTTP {response.status}")

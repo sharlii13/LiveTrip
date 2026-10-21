@@ -6,7 +6,7 @@ pydantic-settings==2.5.0
 
 
 # HTTP client - Modern version
-httpx>=0.25.0
+httpx>=0.25.0,<0.28  # FastAPI 0.104 TestClient breaks on httpx 0.28
 requests>=2.31.0
 
 # Database
@@ -42,3 +42,6 @@ email-validator>=2.0.0
 # Root multi-day planner (app/rootplan)
 ortools==9.12.4544
 aiohttp>=3.9.1
+
+# Tests
+pytest>=8.0
