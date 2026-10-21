@@ -158,6 +158,10 @@ class GoogleDistanceService:
         """
         if not self.api_key:
             raise ValueError("Google Distance Matrix API key required. No mock data allowed.")
+        state = distance_source.get(None)
+        if state and state.get("estimated"):
+            # Google already refused this request (e.g. billing off); don't pay the round trip again
+            raise ValueError("Routes API unavailable for this request")
 
         def waypoint(lat: float, lng: float) -> Dict[str, Any]:
             return {"waypoint": {"location": {"latLng": {"latitude": lat, "longitude": lng}}}}

@@ -195,7 +195,8 @@ class DayAssignmentResult(BaseModel):
 
 class OptimizationConfig(BaseModel):
     """Configuration for OR-Tools optimization."""
-    time_limit_ms: int = Field(default=2000, description="Solver time limit per day")
+    # guided local search always runs to the limit; a day has <10 stops, so 1 s is plenty
+    time_limit_ms: int = Field(default=1000, description="Solver time limit per day")
     drop_penalty: int = Field(default=500, description="Penalty for dropping POIs")
     distance_weight: float = Field(default=1.0, description="Weight for distance optimization")
     time_weight: float = Field(default=1.5, description="Weight for time optimization")

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Calendar, User, Heart, Users, Home, PawPrint, Leaf, Utensils, Check, ChevronLeft, ChevronRight, Map, List, Shield, Globe, CheckCircle } from "lucide-react";
+import { Search, MapPin, Calendar, User, Heart, Users, Home, PawPrint, Leaf, Utensils, Check, ChevronLeft, ChevronRight, Map, List, Shield, Globe, CheckCircle, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,6 +57,7 @@ export default function SearchPage() {
   
   // Language preference states
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const [languageSearch, setLanguageSearch] = useState('');
 
   const { data: destinations, isLoading } = useQuery<Destination[]>({
@@ -186,8 +187,9 @@ export default function SearchPage() {
   const handleNextStep = () => {
     if (tripStep < 8) {
       setTripStep(tripStep + 1);
-    } else {
-      handleSubmitTrip();
+    } else if (!submitting) {
+      setSubmitting(true);
+      handleSubmitTrip().finally(() => setSubmitting(false));
     }
   };
 
@@ -232,7 +234,8 @@ export default function SearchPage() {
         navigate(`/trips/${result.id}`);
       } else {
         console.error('Failed to create trip');
-        alert('Failed to create trip plan. Please try again.');
+        const err = await response.json().catch(() => ({}));
+        alert(err.detail || 'Failed to create trip plan. Please try again.');
       }
     } catch (error) {
       console.error('Error creating trip:', error);
@@ -877,11 +880,13 @@ export default function SearchPage() {
                       (tripStep === 3 && !selectedFoodPreference) ||
                       (tripStep === 4 && selectedInterests.length === 0) ||
                       (tripStep === 6 && (!emergencyName.trim() || !emergencyPhone.trim() || !emergencyRelation.trim())) ||
-                      (tripStep === 7 && selectedLanguages.length === 0)
+                      (tripStep === 7 && selectedLanguages.length === 0) ||
+                      submitting
                     }
                     className="bg-blue-600 hover:bg-blue-700"
                   >
-                    {tripStep === 8 ? 'Create Trip Plan' : 'Next'}
+                    {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    {tripStep === 8 ? (submitting ? 'Building your itinerary...' : 'Create Trip Plan') : 'Next'}
                     {tripStep < 8 && <ChevronRight className="w-4 h-4 ml-2" />}
                   </Button>
                 </div>

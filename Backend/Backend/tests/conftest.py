@@ -76,6 +76,7 @@ async def fake_weather(lat, lng):
 def app():
     import main  # noqa: E402  (imports after sys.path / cwd setup)
     from livetrip import geo, photos, planning, recommend, social
+    geo.real_search_places = geo.search_places  # kept for the cache test
     for module in (geo, planning, recommend, photos, social):
         if hasattr(module, "search_places"):
             module.search_places = async_fake_places

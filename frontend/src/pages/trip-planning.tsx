@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Bed, Utensils, Camera, Ticket, MapPin, Users, Star, TrendingUp, Globe, Heart, Share2, Bookmark, ChevronLeft, ChevronRight, Check, Shield, Leaf, PawPrint, Home as HomeIcon, CheckCircle, Calendar } from "lucide-react";
+import { Search, Bed, Utensils, Camera, Ticket, MapPin, Users, Star, TrendingUp, Globe, Heart, Share2, Bookmark, ChevronLeft, ChevronRight, Check, Shield, Leaf, PawPrint, Home as HomeIcon, CheckCircle, Calendar, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +46,7 @@ export default function TripPlanning() {
   
   // Language preference states
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const [languageSearch, setLanguageSearch] = useState('');
 
   // Trip planning options
@@ -85,8 +86,9 @@ export default function TripPlanning() {
   const handleNextStep = () => {
     if (tripStep < 8) {
       setTripStep(tripStep + 1);
-    } else {
-      handleSubmitTrip();
+    } else if (!submitting) {
+      setSubmitting(true);
+      handleSubmitTrip().finally(() => setSubmitting(false));
     }
   };
 
@@ -619,14 +621,21 @@ export default function TripPlanning() {
                   (tripStep === 3 && !selectedFoodPreference) ||
                   (tripStep === 4 && selectedInterests.length === 0) ||
                   (tripStep === 6 && (!emergencyName.trim() || !emergencyPhone.trim() || !emergencyRelation.trim())) ||
-                  (tripStep === 7 && selectedLanguages.length === 0)
+                  (tripStep === 7 && selectedLanguages.length === 0) ||
+                  submitting
                 }
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                {tripStep === 8 ? 'Create Trip Plan' : 'Next'}
+                {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {tripStep === 8 ? (submitting ? 'Building your itinerary...' : 'Create Trip Plan') : 'Next'}
                 {tripStep < 8 && <ChevronRight className="w-4 h-4 ml-2" />}
               </Button>
             </div>
+            {submitting && (
+              <p className="text-sm text-muted-foreground text-right pt-2" role="status">
+                Finding places, planning routes and picking restaurants. Longer trips can take up to a minute.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

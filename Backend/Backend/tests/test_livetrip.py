@@ -103,6 +103,39 @@ def test_date_picker_timestamps_keep_the_picked_day():
     assert _parse_date(None, fallback) == fallback
 
 
+def test_search_cache_shares_calls_and_forgets_failures(app, monkeypatch):
+    import asyncio
+    from fastapi import HTTPException
+    from livetrip import geo
+    calls = {"n": 0, "fail": False}
+
+    async def fake_google(query, near):
+        calls["n"] += 1
+        await asyncio.sleep(0.01)
+        if calls["fail"]:
+            raise HTTPException(429, geo.QUOTA_MESSAGE)
+        return [{"name": f"{query} {i}"} for i in range(5)]
+
+    monkeypatch.setattr(geo, "_google_text_search", fake_google)
+    geo._search_cache.clear()
+
+    async def scenario():
+        same = await asyncio.gather(*[geo.real_search_places("cafes", (26.91241, 75.78731), 3) for _ in range(4)])
+        assert calls["n"] == 1 and all(len(r) == 3 for r in same)  # one Google call for four lookups
+        await geo.real_search_places("cafes", (26.9119, 75.7869))  # rounds to the same ~1 km cell
+        assert calls["n"] == 1
+        calls["fail"] = True
+        for _ in range(2):
+            try:
+                await geo.real_search_places("museums", None)
+            except HTTPException as e:
+                assert e.status_code == 429
+        assert calls["n"] == 3  # the failure was retried, not cached
+
+    asyncio.run(scenario())
+    geo._search_cache.clear()
+
+
 def test_other_users_cannot_edit_or_view_private_trip(make_user):
     a, b = make_user("Owner"), make_user("Other")
     itin = make_trip(a, days=1)

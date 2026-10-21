@@ -281,23 +281,19 @@ def rank_places(places: List[Dict], boosts: Dict[str, float], exclude: set) -> L
                   reverse=True)
 
 
-async def restaurant_near(lat: float, lng: float, food_pref: str, exclude: set) -> Optional[Dict]:
+async def restaurant_options(lat: float, lng: float, food_pref: str) -> List[Dict]:
+    """Restaurants near a stop, best first."""
     veg = (food_pref or "").lower() in VEG_WORDS
     query = "pure vegetarian restaurant" if veg else "popular restaurant"
     try:
         found = await search_places(query, near=(lat, lng), limit=10)
     except HTTPException:
-        return None
+        return []
     # nearby first, but accept up to 8 km so stops outside town (forts, lakes) still get a meal suggestion
-    found = [p for p in found if p["name"] not in exclude and road_km((lat, lng), (p["lat"], p["lng"])) <= 8]
+    found = [dict(p, category="food", outdoor=False) for p in found if road_km((lat, lng), (p["lat"], p["lng"])) <= 8]
     found.sort(key=lambda p: place_score(p["rating"], p["rating_count"]) - road_km((lat, lng), (p["lat"], p["lng"])),
                reverse=True)
-    if not found:
-        return None
-    best = dict(found[0])
-    best["category"] = "food"
-    best["outdoor"] = False
-    return best
+    return found
 
 
 # ---------- generation ----------
@@ -352,7 +348,8 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
             forced.append(hit[0])
             pool.pop(hit[0]["name"].lower(), None)
     if not pool and not forced:
-        raise HTTPException(404, f"No places found for '{destination}'")
+        failed = next((r for r in results if isinstance(r, HTTPException)), None)
+        raise failed or HTTPException(404, f"No places found for '{destination}'")  # e.g. quota reached
 
     boosts = preferred_categories(db, owner)
     ranked = forced + rank_places(list(pool.values()), boosts, set())
@@ -411,31 +408,33 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
     items: List[Dict] = []
     used = {p["name"] for day_places in schedule.values() for p in day_places}
     for day in range(1, days + 1):
-        pos = 0
-        for p in schedule.get(day, []):
-            pos += 1
+        for pos, p in enumerate(schedule.get(day, []), 1):
             items.append(_new_item(day, pos, p))
+    reflow(items, mode)
+    meals = []  # (day, label, stop the meal follows)
+    for day in range(1, days + 1):
         day_visits = [i for i in items if i["day"] == day]
-        if not day_visits:
-            continue
-        reflow(items, mode)
-        lunch_after = next((i for i in day_visits if hhmm_to_min(i["end"]) >= 12 * 60), day_visits[-1])
-        for label, anchor in (("Lunch", lunch_after), ("Dinner", day_visits[-1])):
-            spot = await restaurant_near(anchor["lat"], anchor["lng"], prefs.get("food", ""), used)
-            meal = _new_item(day, anchor["position"], spot or {"name": "", "lat": anchor["lat"], "lng": anchor["lng"],
-                                                               "category": "food", "outdoor": False}, kind="meal")
-            meal["name"] = f"{label} at {spot['name']}" if spot else f"{label} break"
-            meal["duration_min"] = 60
-            if spot:
-                used.add(spot["name"])
-            if label == "Lunch":
-                for i in items:
-                    if i["day"] == day and i["position"] > anchor["position"]:
-                        i["position"] += 1
-                meal["position"] = anchor["position"] + 1
-            else:
-                meal["position"] = max(i["position"] for i in items if i["day"] == day) + 1
-            items.append(meal)
+        if day_visits:
+            lunch_after = next((i for i in day_visits if hhmm_to_min(i["end"]) >= 12 * 60), day_visits[-1])
+            meals += [(day, "Lunch", lunch_after), (day, "Dinner", day_visits[-1])]
+    # look all restaurants up at once (one Google call each); picking stays in order so none repeats
+    options = await asyncio.gather(*[restaurant_options(a["lat"], a["lng"], prefs.get("food", "")) for _, _, a in meals])
+    for (day, label, anchor), found in zip(meals, options):
+        spot = next((o for o in found if o["name"] not in used), None)
+        meal = _new_item(day, anchor["position"], spot or {"name": "", "lat": anchor["lat"], "lng": anchor["lng"],
+                                                           "category": "food", "outdoor": False}, kind="meal")
+        meal["name"] = f"{label} at {spot['name']}" if spot else f"{label} break"
+        meal["duration_min"] = 60
+        if spot:
+            used.add(spot["name"])
+        if label == "Lunch":
+            for i in items:
+                if i["day"] == day and i["position"] > anchor["position"]:
+                    i["position"] += 1
+            meal["position"] = anchor["position"] + 1
+        else:
+            meal["position"] = max(i["position"] for i in items if i["day"] == day) + 1
+        items.append(meal)
     reflow(items, mode)
     save_items(db, trip, items)
     trip.version = 1

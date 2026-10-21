@@ -1,5 +1,7 @@
 """Places search, live weather, distances and travel-time estimates."""
+import asyncio
 import math
+import time
 from datetime import date
 from typing import Dict, List, Optional, Tuple
 
@@ -51,16 +53,42 @@ def travel_minutes(a: Tuple[float, float], b: Tuple[float, float], mode: str = "
     return max(5, round(km / SPEED_KMH.get(mode, 25) * 60))
 
 
+QUOTA_MESSAGE = ("Google Places has hit this API key's daily limit. Enable billing on the Google Cloud "
+                 "project (it includes a free monthly allowance) or try again after the quota resets.")
+_SEARCH_TTL_S = 6 * 3600
+# shortcut: in-process cache (lost on restart, not shared between workers); move to Redis if you run several workers
+_search_cache: Dict[Tuple, Tuple[float, "asyncio.Task"]] = {}
+
+
 async def search_places(query: str, near: Optional[Tuple[float, float]] = None, limit: int = 20) -> List[Dict]:
-    """Google Places API (New) text search, as plain dicts. Raises 503 when no key is configured."""
+    """Google Places API (New) text search, as plain dicts, cached for a few hours.
+    Points are rounded to ~1 km so nearby lookups (e.g. meal stops) share one Google call."""
+    near = (round(near[0], 2), round(near[1], 2)) if near else None
+    key = (query.strip().lower(), near)
+    hit = _search_cache.get(key)
+    if hit and hit[0] > time.monotonic():
+        task = hit[1]
+    else:
+        task = asyncio.ensure_future(_google_text_search(query, near))
+        _search_cache[key] = (time.monotonic() + _SEARCH_TTL_S, task)
+    try:
+        return [dict(p) for p in (await asyncio.shield(task))[:limit]]  # copies: callers may annotate them
+    except Exception:
+        _search_cache.pop(key, None)  # never cache failures
+        raise
+
+
+async def _google_text_search(query: str, near: Optional[Tuple[float, float]]) -> List[Dict]:
     from app.rootplan.services.google_places import GooglePlacesService
     try:
         service = GooglePlacesService()
         places = await service.text_search(query, near)
     except ValueError as e:
+        if "quota" in str(e).lower():
+            raise HTTPException(status_code=429, detail=QUOTA_MESSAGE)
         raise HTTPException(status_code=503, detail=str(e))
     out = []
-    for p in places[:limit]:
+    for p in places:
         category = categorize(p.types)
         out.append({
             "name": p.name, "place_id": p.place_id, "address": p.formatted_address,
