@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from database import User, get_db
 from . import rewards
-from .core import current_user, profile_of
+from .core import utc_iso, current_user, profile_of
 from .geo import road_km, search_places
 from .models import (Group, GroupMember, GroupSuggestion, GroupVote, ItineraryItem, Photo, PointEvent, Trip,
                      UserBadge, WishlistItem)
@@ -205,6 +205,10 @@ def accept(group_id: int, suggestion_id: int, user: User = Depends(current_user)
         raise HTTPException(400, "Link a trip to this group first")
     trip = db.get(Trip, group.trip_id)
     items = load_items(db, trip)
+    if any(i["name"].lower() == s.name.lower() and i["status"] != "skipped" for i in items):
+        s.status = "added"  # already planned, so the vote is settled
+        db.commit()
+        return group_detail(group_id, user, db)
     place = {"name": s.name, "place_id": s.place_id, "lat": s.lat, "lng": s.lng, "category": s.category}
     op = fit_place(trip, items, place)
     if not op:
@@ -241,7 +245,7 @@ class WishIn(BaseModel):
 
 def _wish_out(w: WishlistItem) -> Dict:
     return {"id": w.id, "name": w.name, "city": w.city, "place_id": w.place_id, "lat": w.lat, "lng": w.lng,
-            "category": w.category, "source": w.source, "created_at": w.created_at.isoformat()}
+            "category": w.category, "source": w.source, "created_at": utc_iso(w.created_at)}
 
 
 @router.get("/wishlist")

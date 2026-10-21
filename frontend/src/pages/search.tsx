@@ -227,10 +227,9 @@ export default function SearchPage() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Trip created successfully:', result);
-        alert('Trip plan created successfully!');
         setShowTripPlanning(false);
         setTripStep(1);
+        navigate(`/trips/${result.id}`);
       } else {
         console.error('Failed to create trip');
         alert('Failed to create trip plan. Please try again.');

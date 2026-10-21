@@ -1,4 +1,46 @@
-# Travel Itinerary Planning API
+# LiveTrip – The Living Itinerary Buddy
+
+## Run it (backend + frontend)
+
+1. Backend (Python 3.13):
+   ```
+   cd Backend/Backend
+   python -m pip install -r requirements.txt
+   ```
+   Put your key in `Backend/Backend/app/.env` (one line, no spaces or quotes needed):
+   ```
+   GOOGLE_PLACES_API_KEY=your_key
+   ```
+   The key needs **Places API (New)** enabled. Travel times use the **Routes API**, which needs billing
+   enabled on the Google Cloud project; without it, times are estimated and the API says so.
+   Weather comes from Open-Meteo and needs no key. Then start the server from `Backend/Backend/app`:
+   ```
+   python -m uvicorn main:app --port 8000
+   ```
+2. Frontend (Node 20+), in another terminal:
+   ```
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   Open http://localhost:5173. The dev server proxies `/api` and `/uploads` to port 8000.
+3. Tests: `cd Backend/Backend && python -m pytest tests` (Google and weather are faked; no key needed).
+
+What works end to end: email sign-up/sign-in; personalised itineraries (interests, food, pace,
+must-visit and saved places) with lunch/dinner stops; live weather and weather-aware rescheduling;
+skip, replace, relax, running-late and route-optimisation proposals you confirm before they apply;
+check-ins (points need location within 500 m); restaurant, stay, mood and nearby suggestions; a chat
+assistant; photo feed with privacy controls, likes, comments, saves, albums and add-to-itinerary;
+points, badges, daily and destination challenges, streaks, leaderboards and offer redemption;
+trip groups with roles and voting; wishlist; travel history. New pages: `/trips`, `/trips/:id`,
+`/feed`, `/gallery`, `/rewards`, `/groups`, `/wishlist`, `/history`, `/assistant`.
+
+Not included yet: Google sign-in (needs an OAuth client), live hotel prices/booking, live traffic
+(Routes API billing), and real partner businesses (the seeded offers are labelled demo partners).
+
+---
+
+# Travel Itinerary Planning API (original planner)
 
 A production-grade hybrid itinerary planning system that creates optimal one-day travel itineraries using intelligent POI selection and route optimization.
 

@@ -1,5 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
-import { Heart, User, LogOut, Sun, Moon, Bell, Calendar, MapPin } from "lucide-react";
+import {
+  Heart, User, LogOut, Sun, Moon, Calendar, MapPin, Camera, Trophy, Users, Images, History, Bot, MessageSquare,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,6 +15,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+const NAV = [
+  { to: "/", label: "Home" },
+  { to: "/trips", label: "My Trips", live: true },
+  { to: "/feed", label: "Feed" },
+  { to: "/rewards", label: "Rewards" },
+  { to: "/groups", label: "Groups" },
+  { to: "/map", label: "Map" },
+  { to: "/feedback", label: "Feedback" },
+];
+
+const MENU = [
+  { to: "/trips", label: "My trips", icon: Calendar },
+  { to: "/gallery", label: "My gallery", icon: Images },
+  { to: "/wishlist", label: "Saved places", icon: Heart },
+  { to: "/history", label: "Travel history", icon: History },
+  { to: "/assistant", label: "Travel assistant", icon: Bot },
+  { to: "/rewards", label: "Rewards", icon: Trophy },
+  { to: "/groups", label: "Trip groups", icon: Users },
+  { to: "/itinerary", label: "Classic itinerary", icon: MessageSquare },
+  { to: "/multi-day-planner", label: "Multi-day planner", icon: MapPin },
+];
+
 export default function Navbar() {
   const location = useLocation();
   const { user, isAuthenticated, login, logout } = useAuth();
@@ -22,7 +46,7 @@ export default function Navbar() {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
-    
+
     setIsDarkMode(shouldBeDark);
     if (shouldBeDark) {
       document.documentElement.classList.add('dark');
@@ -42,108 +66,70 @@ export default function Navbar() {
     }
   };
 
+  const active = (to: string) => (to === "/" ? location.pathname === "/" : location.pathname.startsWith(to));
+
   return (
     <header className="bg-background border-b border-border sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-16 gap-4">
           {/* Logo */}
           <Link to="/" data-testid="link-home">
             <LiveTripLogo size="lg" className="cursor-pointer" />
           </Link>
-          
-              {/* Navigation Menu */}
-              <nav className="hidden md:flex space-x-6">
-                <Link to="/" data-testid="link-home-nav">
-                  <span className={`font-medium transition-colors cursor-pointer ${
-                    location.pathname === "/" ? "text-primary" : "text-foreground hover:text-primary"
-                  }`}>
-                    Home
-                  </span>
-                </Link>
-                <Link to="/map" data-testid="link-map">
-                  <span className={`font-medium transition-colors cursor-pointer ${
-                    location.pathname === "/map" ? "text-primary" : "text-foreground hover:text-primary"
-                  }`}>
-                    Map
-                  </span>
-                </Link>
-                <Link to="/itinerary" data-testid="link-itinerary">
-                  <span className={`font-medium transition-colors cursor-pointer flex items-center space-x-2 ${
-                    location.pathname === "/itinerary" ? "text-primary" : "text-foreground hover:text-primary"
-                  }`}>
-                    <Calendar className="w-4 h-4" />
-                    <span>My Itinerary</span>
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  </span>
-                </Link>
-                <Link to="/multi-day-planner" data-testid="link-multi-day">
-                  <span className={`font-medium transition-colors cursor-pointer flex items-center space-x-2 ${
-                    location.pathname === "/multi-day-planner" ? "text-primary" : "text-foreground hover:text-primary"
-                  }`}>
-                    <MapPin className="w-4 h-4" />
-                    <span>Multi-Day Planner</span>
-                  </span>
-                </Link>
-                <Link to="/feedback" data-testid="link-feedback">
-                  <span className={`font-medium transition-colors cursor-pointer ${
-                    location.pathname === "/feedback" ? "text-primary" : "text-foreground hover:text-primary"
-                  }`}>
-                    Feedback
-                  </span>
-                </Link>
-              </nav>
 
-              {/* Mobile Navigation */}
-              <nav className="md:hidden flex space-x-4">
-                <Link to="/itinerary">
-                  <span className="flex items-center space-x-2 text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer">
-                    <Calendar className="w-4 h-4" />
-                    <span>Itinerary</span>
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  </span>
-                </Link>
-              </nav>
-          
+          {/* Navigation Menu */}
+          <nav className="hidden lg:flex space-x-6">
+            {NAV.map((n) => (
+              <Link key={n.to} to={n.to} data-testid={`link-nav-${n.label.toLowerCase().replace(/\s/g, "-")}`}>
+                <span className={`font-medium transition-colors cursor-pointer flex items-center space-x-2 ${
+                  active(n.to) ? "text-primary" : "text-foreground hover:text-primary"
+                }`}>
+                  <span>{n.label}</span>
+                  {n.live && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>}
+                </span>
+              </Link>
+            ))}
+          </nav>
+
+          {/* Mobile Navigation */}
+          <nav className="lg:hidden flex space-x-4">
+            <Link to="/trips">
+              <span className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer">
+                <Calendar className="w-4 h-4" /><span>Trips</span>
+              </span>
+            </Link>
+            <Link to="/feed">
+              <span className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer">
+                <Camera className="w-4 h-4" /><span>Feed</span>
+              </span>
+            </Link>
+          </nav>
+
           {/* User Actions */}
           <div className="flex items-center space-x-4">
-            <Link to="/itinerary">
-              <button 
-                className="text-foreground hover:text-primary transition-colors duration-200 hover:scale-110 relative" 
-                data-testid="button-itinerary-quick"
-                title="My Itinerary"
-              >
+            <Link to="/trips" title="My trips" data-testid="button-itinerary-quick">
+              <span className="text-foreground hover:text-primary transition-colors duration-200 hover:scale-110 relative inline-block">
                 <Calendar className="w-5 h-5" />
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              </button>
+              </span>
             </Link>
-            
-            <button 
-              className="text-foreground hover:text-primary transition-colors duration-200 hover:scale-110" 
-              data-testid="button-favorites"
-              title="Favorites"
-            >
-              <Heart className="w-5 h-5" />
-            </button>
-            
-            <button 
-              className="text-foreground hover:text-primary transition-colors duration-200 hover:scale-110" 
-              title="Notifications"
-            >
-              <Bell className="w-5 h-5" />
-            </button>
-            
-            <button 
+
+            <Link to="/wishlist" title="Saved places" data-testid="button-favorites">
+              <Heart className="w-5 h-5 text-foreground hover:text-primary transition-colors duration-200 hover:scale-110" />
+            </Link>
+
+            <button
               onClick={toggleDarkMode}
-              className="text-foreground hover:text-primary transition-colors duration-200 hover:scale-110" 
+              className="text-foreground hover:text-primary transition-colors duration-200 hover:scale-110"
               title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
             >
               {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-            
+
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full" aria-label="Account menu">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user?.avatar || ""} alt={user?.name || ""} />
                       <AvatarFallback>
@@ -166,12 +152,14 @@ export default function Navbar() {
                       <span>Profile</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/itinerary">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      <span>My Itinerary</span>
-                    </Link>
-                  </DropdownMenuItem>
+                  {MENU.map((m) => (
+                    <DropdownMenuItem key={m.to} asChild>
+                      <Link to={m.to}>
+                        <m.icon className="mr-2 h-4 w-4" />
+                        <span>{m.label}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -180,9 +168,9 @@ export default function Navbar() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button 
+              <Button
                 onClick={login}
-                className="bg-primary text-primary-foreground hover:bg-primary/90" 
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
                 data-testid="button-signin"
               >
                 Sign In

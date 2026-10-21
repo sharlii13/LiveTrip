@@ -1,7 +1,7 @@
 """Photo feed: upload, location tagging, reactions, comments, saves, gallery albums, add-to-itinerary."""
 import os
 import uuid
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -12,9 +12,9 @@ from sqlalchemy.orm import Session
 
 from database import User, get_db
 from . import rewards
-from .core import APP_DIR, current_user, optional_user, profile_of
+from .core import utc_iso, APP_DIR, current_user, optional_user, profile_of
 from .geo import search_places, today
-from .models import (Group, GroupMember, ItineraryItem, Photo, PhotoComment, PhotoReaction, PhotoSave, PointEvent,
+from .models import (Group, GroupMember, ItineraryItem, Photo, PhotoComment, PhotoReaction, PhotoSave,
                      Trip)
 from .planning import fit_place, get_trip, load_items
 
@@ -59,7 +59,7 @@ def photo_out(db: Session, p: Photo, user: Optional[User]) -> Dict:
         "hashtags": [h for h in (p.hashtags or "").split() if h], "place_name": p.place_name,
         "place_id": p.place_id, "city": p.city, "lat": lat, "lng": lng, "location_precise": mine,
         "visibility": p.visibility, "trip_id": p.trip_id, "activity": item.name if item else None,
-        "created_at": p.created_at.isoformat(),
+        "created_at": utc_iso(p.created_at),
         "user": {"id": p.user_id, "name": owner.name if owner else "Traveler",
                  "username": profile_of(db, owner).username if owner else ""},
         "likes": db.query(PhotoReaction).filter_by(photo_id=p.id).count(),
@@ -113,9 +113,7 @@ async def upload_photo(file: UploadFile = File(...), caption: str = Form(""), ha
     db.flush()
     awards: List[Dict] = []
     if visibility == "public" and photo.place_name:
-        awarded_today = db.query(PointEvent).filter(PointEvent.user_id == user.id, PointEvent.kind == "photo_upload",
-                                                    func.date(PointEvent.created_at) == today()).count()
-        if awarded_today < rewards.PHOTO_AWARDS_PER_DAY:
+        if rewards.events_on(db, user.id, "photo_upload", today()) < rewards.PHOTO_AWARDS_PER_DAY:
             key = (photo.place_id or photo.place_name).lower()
             e = rewards.award(db, user.id, "photo_upload", f"photo:{key}:{today()}", city=photo.city,
                               trip_id=trip_id, meta={"photo_id": photo.id, "place": photo.place_name})
@@ -161,7 +159,7 @@ def saved(user: User = Depends(current_user), db: Session = Depends(get_db)):
 def get_photo(photo_id: int, user: Optional[User] = Depends(optional_user), db: Session = Depends(get_db)):
     photo = _get_visible(db, photo_id, user)
     out = photo_out(db, photo, user)
-    out["comment_list"] = [{"id": c.id, "text": c.text, "created_at": c.created_at.isoformat(),
+    out["comment_list"] = [{"id": c.id, "text": c.text, "created_at": utc_iso(c.created_at),
                             "user": {"id": c.user_id, "name": db.get(User, c.user_id).name}}
                            for c in db.query(PhotoComment).filter_by(photo_id=photo.id).order_by(PhotoComment.id)]
     return out

@@ -99,9 +99,14 @@ def user_public(db: Session, user: User) -> dict:
         "location": p.location,
         "avatar": p.avatar,
         "provider": "local",
-        "createdAt": (user.created_at or datetime.utcnow()).isoformat(),
+        "createdAt": utc_iso(user.created_at or datetime.utcnow()),
         "settings": {"onLeaderboard": p.on_leaderboard, "historyPublic": p.history_public, "isBusiness": p.is_business},
     }
+
+
+def utc_iso(stamp: datetime) -> str:
+    """Stored times are naive UTC; the "Z" stops browsers reading them as local time."""
+    return stamp.isoformat() + "Z"
 
 
 def loads(value: Optional[str], default: Any) -> Any:

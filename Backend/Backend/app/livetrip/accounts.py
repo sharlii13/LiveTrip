@@ -10,7 +10,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from database import User, get_db
-from .core import (SESSION_COOKIE, TOKEN_DAYS, create_token, current_user, hash_password, loads, optional_user,
+from .core import (utc_iso, SESSION_COOKIE, TOKEN_DAYS, create_token, current_user, hash_password, loads, optional_user,
                    profile_of, user_public, verify_password)
 from .models import Destination, Profile, Review
 
@@ -119,7 +119,7 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 def _review_out(db: Session, r: Review, with_user: bool = True) -> dict:
     out = {"id": str(r.id), "userId": str(r.user_id), "destinationId": r.destination_id, "rating": r.rating,
            "title": r.title, "content": r.content, "images": [], "helpful": r.helpful,
-           "createdAt": r.created_at.isoformat()}
+           "createdAt": utc_iso(r.created_at)}
     if with_user:
         u = db.get(User, r.user_id)
         out["user"] = {k: v for k, v in user_public(db, u).items() if k != "email"} if u else None
@@ -138,7 +138,7 @@ def _destination_out(db: Session, d: Destination) -> dict:
             "description": d.description, "shortDescription": d.short_description, "images": loads(d.images, []),
             "rating": f"{(stats[1] or 0):.2f}", "reviewCount": stats[0], "priceRange": d.price_range,
             "openingHours": d.opening_hours, "website": d.website, "phone": d.phone, "address": d.address,
-            "features": loads(d.features, []), "lat": d.lat, "lng": d.lng, "createdAt": d.created_at.isoformat()}
+            "features": loads(d.features, []), "lat": d.lat, "lng": d.lng, "createdAt": utc_iso(d.created_at)}
 
 
 @router.get("/destinations")

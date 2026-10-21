@@ -2,7 +2,7 @@
 import hashlib
 import json
 import secrets
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,7 +11,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import User, get_db
-from .core import current_user, loads, profile_of
+from .core import utc_iso, current_user, loads, profile_of
 from .geo import haversine_km, today
 from .models import GroupMember, Offer, Photo, PointEvent, Profile, Redemption, Trip, UserBadge
 
@@ -69,18 +69,28 @@ def earned(db: Session, user_id: int) -> int:
                .filter(PointEvent.user_id == user_id, PointEvent.points > 0).scalar())
 
 
+def local_day(stamp: datetime) -> str:
+    """Timestamps are stored in UTC; days (challenges, streaks, caps) follow the local calendar."""
+    return stamp.replace(tzinfo=timezone.utc).astimezone().date().isoformat()
+
+
 def _visits(db: Session, user_id: int, day: Optional[str] = None) -> List[dict]:
     q = db.query(PointEvent).filter_by(user_id=user_id, kind="visit_complete")
     events = q.all()
     out = [dict(loads(e.meta, {}), created=e.created_at) for e in events]
     if day:
-        out = [v for v in out if v["created"].date().isoformat() == day]
+        out = [v for v in out if local_day(v["created"]) == day]
     return out
 
 
 def active_days(db: Session, user_id: int) -> List[str]:
     rows = db.query(PointEvent.created_at).filter(PointEvent.user_id == user_id, PointEvent.points > 0).all()
-    return sorted({r[0].date().isoformat() for r in rows})
+    return sorted({local_day(r[0]) for r in rows})
+
+
+def events_on(db: Session, user_id: int, kind: str, day: str) -> int:
+    rows = db.query(PointEvent.created_at).filter_by(user_id=user_id, kind=kind).all()
+    return sum(1 for r in rows if local_day(r[0]) == day)
 
 
 def current_streak(db: Session, user_id: int) -> int:
@@ -118,8 +128,9 @@ def challenge_progress(db: Session, user_id: int, code: str, day: str) -> int:
             best = max(best, near)
         return best
     if code == "photo_landmark":
-        return db.query(Photo).filter(Photo.user_id == user_id, Photo.visibility == "public", Photo.place_name != "",
-                                      func.date(Photo.created_at) == day).count()
+        photos = db.query(Photo.created_at).filter(Photo.user_id == user_id, Photo.visibility == "public",
+                                                   Photo.place_name != "").all()
+        return sum(1 for p in photos if local_day(p[0]) == day)
     return 0
 
 
@@ -184,15 +195,15 @@ def dashboard(user: User = Depends(current_user), db: Session = Depends(get_db))
         "balance": balance(db, user.id),
         "streak": current_streak(db, user.id),
         "badges": [{"code": c, "title": t, "description": d, "earned": c in owned,
-                    "awarded_at": owned[c].isoformat() if c in owned else None} for c, (t, d) in BADGES.items()],
+                    "awarded_at": utc_iso(owned[c]) if c in owned else None} for c, (t, d) in BADGES.items()],
         "challenges_today": challenges_for(db, user.id, day),
         "completed_challenges": [{"title": loads(e.meta, {}).get("challenge") or loads(e.meta, {}).get("city"),
-                                  "points": e.points, "date": e.created_at.date().isoformat()} for e in completed],
+                                  "points": e.points, "date": local_day(e.created_at)} for e in completed],
         "upcoming_challenges": [{"date": d, "codes": [CHALLENGES[c][0] for c in daily_challenge_codes(d)]}
                                 for d in [(date.today() + timedelta(days=i)).isoformat() for i in (1, 2)]],
         "redemptions": [{"code": r.code, "offer": o.title, "business": o.business_name, "cost": o.cost_points,
-                         "date": r.created_at.isoformat()} for r, o in redemptions],
-        "recent_activity": [{"kind": e.kind, "points": e.points, "date": e.created_at.isoformat(),
+                         "date": utc_iso(r.created_at)} for r, o in redemptions],
+        "recent_activity": [{"kind": e.kind, "points": e.points, "date": utc_iso(e.created_at),
                              "meta": loads(e.meta, {})} for e in recent],
         "point_rules": POINTS,
     }

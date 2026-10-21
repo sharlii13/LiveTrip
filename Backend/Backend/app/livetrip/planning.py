@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from database import User, get_db
 from . import rewards
-from .core import current_user, loads, optional_user
+from .core import utc_iso, current_user, loads, optional_user
 from .geo import (OUTDOOR_CATEGORIES, VISIT_MINUTES, haversine_km, hhmm_to_min, min_to_hhmm, road_km, search_places,
                   geocode, travel_minutes, weather)
 from .models import Alert, Group, GroupMember, ItemFeedback, ItineraryItem, Trip, WishlistItem
@@ -122,7 +122,12 @@ def _parse_date(value: Optional[str], fallback: date) -> date:
     if not value:
         return fallback
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo and (parsed.hour or parsed.minute):
+            # shortcut: date pickers send local midnight as UTC (e.g. 18:30Z for IST); rounding to the
+            # nearest day recovers the picked date for any offset within ±12h. Send YYYY-MM-DD to avoid it.
+            parsed += timedelta(hours=12)
+        return parsed.date()
     except ValueError:
         raise HTTPException(400, f"Invalid date: {value}")
 
@@ -283,8 +288,10 @@ async def restaurant_near(lat: float, lng: float, food_pref: str, exclude: set) 
         found = await search_places(query, near=(lat, lng), limit=10)
     except HTTPException:
         return None
-    found = [p for p in found if p["name"] not in exclude and road_km((lat, lng), (p["lat"], p["lng"])) <= 3]
-    found.sort(key=lambda p: place_score(p["rating"], p["rating_count"]), reverse=True)
+    # nearby first, but accept up to 8 km so stops outside town (forts, lakes) still get a meal suggestion
+    found = [p for p in found if p["name"] not in exclude and road_km((lat, lng), (p["lat"], p["lng"])) <= 8]
+    found.sort(key=lambda p: place_score(p["rating"], p["rating_count"]) - road_km((lat, lng), (p["lat"], p["lng"])),
+               reverse=True)
     if not found:
         return None
     best = dict(found[0])
@@ -329,7 +336,7 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
                 continue
             if road_km(center, (p["lat"], p["lng"])) > 60:
                 continue
-            pool.setdefault(p["place_id"] or p["name"], p)
+            pool.setdefault(p["name"].lower(), p)  # by name: Google sometimes lists one place under two ids
 
     forced: List[Dict] = []
     wanted = list(must_visit or [])
@@ -341,9 +348,9 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
             hit = await search_places(f"{name}, {destination}", near=center, limit=1)
         except HTTPException:
             hit = []
-        if hit:
+        if hit and hit[0]["name"].lower() not in {f["name"].lower() for f in forced}:
             forced.append(hit[0])
-            pool.pop(hit[0]["place_id"] or hit[0]["name"], None)
+            pool.pop(hit[0]["name"].lower(), None)
     if not pool and not forced:
         raise HTTPException(404, f"No places found for '{destination}'")
 
@@ -379,6 +386,21 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
         logger.warning(f"Planner failed, using greedy fallback: {e}")
         schedule = _greedy_days(ranked, origin, days, max_visits)
         state["estimated"] = True
+
+    # each place once across the whole trip, and every must-visit / saved place guaranteed a slot
+    seen: set = set()
+    for day in sorted(schedule):
+        unique = []
+        for p in schedule[day]:
+            if p["name"].lower() not in seen:
+                seen.add(p["name"].lower())
+                unique.append(p)
+        schedule[day] = unique
+    for p in forced:
+        if p["name"].lower() not in seen:
+            day = min(range(1, days + 1), key=lambda d: len(schedule.get(d, [])))
+            schedule.setdefault(day, []).append(p)
+            seen.add(p["name"].lower())
 
     trip = Trip(owner_id=owner.id if owner else None, destination=destination, start_date=start.isoformat(),
                 end_date=end.isoformat(), start_lat=origin[0], start_lng=origin[1], preferences=json.dumps(prefs),
@@ -468,7 +490,7 @@ def itinerary_out(db: Session, trip: Trip, items: Optional[List[Dict]] = None) -
         "distance_note": "Travel times are estimates (Google Routes unavailable)." if trip.distance_source != "google" else "",
         "start_location": {"lat": trip.start_lat, "lng": trip.start_lng}, "user_preferences": prefs,
         "total_budget": prefs.get("budget") or 0, "days": days,
-        "created_at": trip.created_at.isoformat(), "updated_at": (trip.updated_at or trip.created_at).isoformat(),
+        "created_at": utc_iso(trip.created_at), "updated_at": utc_iso(trip.updated_at or trip.created_at),
     }
 
 
@@ -622,7 +644,7 @@ async def alerts(trip_id: int, user: Optional[User] = Depends(optional_user), db
     db.commit()
     return [{"id": str(a.id), "itinerary_id": str(trip.id), "alert_type": a.alert_type, "severity": a.severity,
              "message": a.message, "suggested_actions": loads(a.suggested_actions, []),
-             "timestamp": a.created_at.isoformat(), "acknowledged": a.acknowledged}
+             "timestamp": utc_iso(a.created_at), "acknowledged": a.acknowledged}
             for a in db.query(Alert).filter_by(trip_id=trip.id).order_by(Alert.created_at.desc())]
 
 
@@ -652,7 +674,7 @@ ALT_QUERIES = {
 async def alternatives_for(item: Dict, reason: str, taken: set, radius_km: float = 3) -> List[Dict]:
     query = ALT_QUERIES.get(reason, "attractions")
     found = await search_places(query, near=(item["lat"], item["lng"]), limit=20)
-    out = []
+    candidates = []
     for p in found:
         if p["name"] in taken or p["category"] == "lodging":
             continue
@@ -660,10 +682,10 @@ async def alternatives_for(item: Dict, reason: str, taken: set, radius_km: float
             continue
         if reason in ("relaxed", "cheaper") and p["category"] in ("entertainment", "shopping"):
             continue
-        dist = road_km((item["lat"], item["lng"]), (p["lat"], p["lng"]))
-        if dist > radius_km:
-            continue
-        out.append({**p, "distance_km": round(dist, 2)})
+        candidates.append({**p, "distance_km": round(road_km((item["lat"], item["lng"]), (p["lat"], p["lng"])), 2)})
+    out = [p for p in candidates if p["distance_km"] <= radius_km]
+    if len(out) < 3:  # rural stops: widen the circle rather than offer nothing
+        out = [p for p in candidates if p["distance_km"] <= min(radius_km * 4, 30)]
     out.sort(key=lambda p: place_score(p["rating"], p["rating_count"]) - p["distance_km"] * 0.5, reverse=True)
     return out[:5]
 

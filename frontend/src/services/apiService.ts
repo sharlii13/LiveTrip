@@ -3,9 +3,7 @@
 const VITE_API_BASE = (import.meta as any).env?.VITE_API_BASE as string | undefined;
 const API_BASE_URL = VITE_API_BASE
   ? VITE_API_BASE.replace(/\/?api\/?$/, '')
-  : (process.env.NODE_ENV === 'production' 
-      ? 'https://your-production-domain.com' 
-      : 'http://127.0.0.1:8000');
+  : ''; // same origin: the Vite dev proxy (or the production host) serves /api
 
 export interface CreateItineraryRequest {
   user_id: string;

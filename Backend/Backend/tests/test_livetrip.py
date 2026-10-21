@@ -94,6 +94,15 @@ def test_create_itinerary_frontend_contract(client):
     assert "Hawa Mahal" in names  # must-visit places are always scheduled
 
 
+def test_date_picker_timestamps_keep_the_picked_day():
+    from livetrip.planning import _parse_date
+    fallback = date(2000, 1, 1)
+    assert _parse_date("2026-11-05", fallback) == date(2026, 11, 5)
+    assert _parse_date("2026-11-04T18:30:00.000Z", fallback) == date(2026, 11, 5)  # local midnight in IST
+    assert _parse_date("2026-11-05T05:00:00.000Z", fallback) == date(2026, 11, 5)  # local midnight in New York
+    assert _parse_date(None, fallback) == fallback
+
+
 def test_other_users_cannot_edit_or_view_private_trip(make_user):
     a, b = make_user("Owner"), make_user("Other")
     itin = make_trip(a, days=1)

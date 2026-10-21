@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { API_BASE } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
+import { api } from "@/lib/livetrip";
 
-interface User {
+export interface User {
   id: string;
   username: string | null;
   email: string;
@@ -10,16 +10,20 @@ interface User {
   bio: string | null;
   location: string | null;
   avatar: string | null;
-  googleId: string | null;
   provider: string;
   createdAt: string;
+  settings?: { onLeaderboard: boolean; historyPublic: boolean; isBusiness: boolean };
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: () => void;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refresh: () => Promise<void>;
+  setUser: (user: User | null) => void;
   isAuthenticated: boolean;
 }
 
@@ -30,64 +34,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
+  const refresh = async () => {
     try {
-      const response = await fetch(API_BASE + "/api/auth/me", {
-        credentials: "include",
-      });
-      const data = await response.json();
-      
-      if (data.user) {
-        setUser(data.user);
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      console.error("Error checking auth status:", error);
+      const data = await api<{ user: User }>("/api/auth/me");
+      setUser(data.user);
+    } catch {
       setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const login = () => {
-    // Direct redirect to Google OAuth - let the browser handle it
-    window.location.href = API_BASE + "/api/auth/google";
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
+    const data = await api<{ user: User }>("/api/auth/login", { method: "POST", json: { email, password } });
+    setUser(data.user);
   };
+
+  const signUp = async (name: string, email: string, password: string) => {
+    const data = await api<{ user: User }>("/api/auth/register", { method: "POST", json: { name, email, password } });
+    setUser(data.user);
+  };
+
+  const login = () => navigate("/login");
 
   const logout = async () => {
-    try {
-      const response = await fetch(API_BASE + "/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      
-      if (response.ok) {
-        setUser(null);
-        navigate("/login");
-      } else {
-        throw new Error("Logout failed");
-      }
-    } catch (error) {
-      console.error("Logout error:", error);
-      throw error;
-    }
-  };
-
-  const value: AuthContextType = {
-    user,
-    loading,
-    login,
-    logout,
-    isAuthenticated: !!user,
+    await api("/api/auth/logout", { method: "POST" });
+    setUser(null);
+    navigate("/login");
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{ user, loading, login, signIn, signUp, logout, refresh, setUser, isAuthenticated: !!user }}
+    >
       {children}
     </AuthContext.Provider>
   );

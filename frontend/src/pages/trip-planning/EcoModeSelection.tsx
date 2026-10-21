@@ -95,10 +95,11 @@ const EcoModeSelection: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Trip created successfully:', result);
+        updateTripData({ ecoMode, itineraryId: String(result.id), backendItinerary: result });
         navigate('/trip-planning/summary');
       } else {
-        console.error('Failed to create trip');
+        const err = await response.json().catch(() => ({}));
+        alert(err.detail || 'Failed to create the trip. Please try again.');
       }
     } catch (error) {
       console.error('Error creating trip:', error);

@@ -1,5 +1,5 @@
 const ENV_BASE = (import.meta as any).env?.VITE_API_BASE as string | undefined;
-const DEFAULT_BASE = "http://127.0.0.1:8000";
+const DEFAULT_BASE = ""; // same origin: the Vite dev proxy forwards /api to the backend
 let COMPUTED_BASE = ENV_BASE || DEFAULT_BASE;
 // Dev safeguard: if an unexpected 8001 base is present locally, fall back to 8000 where backend runs
 if (typeof window !== 'undefined') {

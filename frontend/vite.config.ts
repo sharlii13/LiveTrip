@@ -31,6 +31,11 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    // Dev: send API calls and uploaded photos to the FastAPI backend on the same origin (cookies just work)
+    proxy: {
+      "/api": process.env.VITE_BACKEND_URL || "http://127.0.0.1:8000",
+      "/uploads": process.env.VITE_BACKEND_URL || "http://127.0.0.1:8000",
+    },
     fs: {
       strict: true,
       deny: ["**/.*"],

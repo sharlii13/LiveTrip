@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { useTripPlanning } from "@/contexts/TripPlanningContext";
 import LiveTripLogo from "@/components/LiveTripLogo";
-import { apiService, CreateItineraryRequest, MultiDayPlanRequest } from "@/services/apiService";
+import { api, localDate as toLocalDate } from "@/lib/livetrip";
 
 export default function TripPlanning() {
   const navigate = useNavigate();
@@ -118,82 +118,33 @@ export default function TripPlanning() {
 
       updateTripData(updatedTripData);
 
-      // Create itinerary using FastAPI backend
+      // Create and save a live itinerary on the backend, then open it
       try {
         if (!selectedDates.from || !selectedDates.to || !tripData.destination) {
           throw new Error('Missing required trip information');
         }
-
-        const daysDiff = Math.ceil((selectedDates.to.getTime() - selectedDates.from.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        
-        if (isMultiDay && daysDiff > 1) {
-          // Use multi-day API
-          const multiDayRequest: MultiDayPlanRequest = {
-            city: tripData.destination,
-            days: daysDiff,
-            start_time: '09:00',
-            end_time: '19:00',
-            mode: travelMode,
-            pace: travelPace,
-            hotel: { lat: 0, lng: 0 }, // Default coordinates - could be enhanced to use actual hotel location
-          };
-
-          const multiDayResult = await apiService.planMultiDayTrip(multiDayRequest);
-          console.log('Multi-day itinerary created successfully:', multiDayResult);
-          
-          // Store the multi-day result for the itinerary page
-          localStorage.setItem('multiDayItinerary', JSON.stringify(multiDayResult));
-          localStorage.setItem('isMultiDayTrip', 'true');
-          
-          // Update trip data with the multi-day itinerary
-          updateTripData({ 
-            ...updatedTripData, 
-            backendItinerary: multiDayResult
-          } as any);
-        } else {
-          // Use single-day API (existing logic)
-          const createRequest: CreateItineraryRequest = {
-            user_id: 'user_123', // You can get this from auth context
+        const transport = selectedTransport
+          || (travelMode === 'walking' ? 'walking' : travelMode === 'transit' ? 'public-transport' : 'car');
+        const trip = await api<{ id: string }>('/api/trips', {
+          method: 'POST',
+          json: {
             destination: tripData.destination,
-            start_date: selectedDates.from.toISOString(),
-            end_date: selectedDates.to.toISOString(),
-            user_preferences: {
-              food_preference: selectedFoodPreference || 'both',
-              budget_range: tripData.budget ? 
-                (tripData.budget < 1000 ? 'low' : tripData.budget < 3000 ? 'medium' : 'high') : 'medium',
-              travel_style: selectedCompany || 'solo',
-              language_preference: selectedLanguages[0]?.split(' ')[0]?.toLowerCase() || 'english',
-              interests: selectedInterests,
-              avoid_activities: [],
-              eco_mode: ecoMode,
-              preferred_transport: selectedTransport ? [selectedTransport] : ['walking', 'public_transport'],
-            },
-            must_visit_places: [], // You can add must-visit places from user input
-            budget_limit: tripData.budget || undefined,
-          };
-
-          const itinerary = await apiService.createItinerary(createRequest);
-          console.log('Single-day itinerary created successfully:', itinerary);
-          
-          // Store the itinerary ID for the itinerary page
-          localStorage.setItem('currentItineraryId', itinerary.id);
-          localStorage.setItem('isMultiDayTrip', 'false');
-          
-          // Update trip data with the created itinerary
-          updateTripData({ 
-            ...updatedTripData, 
-            itineraryId: itinerary.id,
-            backendItinerary: itinerary
-          } as any);
-        }
-        
-        navigate('/itinerary');
-        
+            startDate: toLocalDate(selectedDates.from),
+            endDate: toLocalDate(selectedDates.to),
+            companyType: selectedCompany,
+            withPets,
+            foodPreference: selectedFoodPreference,
+            interests: selectedInterests,
+            ecoMode,
+            transportPreference: transport,
+            pace: travelPace === 'slow' ? 'relaxed' : travelPace,
+            budget: tripData.budget,
+          },
+        });
+        updateTripData({ ...updatedTripData, itineraryId: trip.id, backendItinerary: trip } as any);
+        navigate(`/trips/${trip.id}`);
       } catch (apiError) {
-        console.log('Creating itinerary with backend failed, using local generation:', apiError);
-        // Fall back to local itinerary generation
-        localStorage.setItem('isMultiDayTrip', 'false');
-        navigate('/itinerary');
+        alert(`Could not create the itinerary: ${(apiError as Error).message}`);
       }
 
     } catch (error) {

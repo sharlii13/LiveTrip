@@ -30,6 +30,15 @@ import EmergencyContact from "@/pages/trip-planning/EmergencyContact";
 import LanguagePreference from "@/pages/trip-planning/LanguagePreference";
 import TripSummary from "@/pages/trip-planning/TripSummary";
 import MultiDayPlanner from "@/components/itinerary/MultiDayPlanner";
+import Trips from "@/pages/trips";
+import TripDetail from "@/pages/trip-detail";
+import Feed from "@/pages/feed";
+import Gallery from "@/pages/gallery";
+import Rewards from "@/pages/rewards";
+import { GroupsList, GroupDetailPage } from "@/pages/groups";
+import Wishlist from "@/pages/wishlist";
+import TravelHistory from "@/pages/history";
+import Assistant from "@/pages/assistant";
 
 function Router() {
   return (
@@ -63,6 +72,16 @@ function Router() {
         <Route path="/trip-planning/language-preference" element={<LanguagePreference />} />
         <Route path="/trip-planning/summary" element={<TripSummary />} />
         <Route path="/multi-day-planner" element={<MultiDayPlanner />} />
+        <Route path="/trips" element={<Trips />} />
+        <Route path="/trips/:id" element={<TripDetail />} />
+        <Route path="/feed" element={<Feed />} />
+        <Route path="/assistant" element={<Assistant />} />
+        <Route path="/gallery" element={<ProtectedRoute><Gallery /></ProtectedRoute>} />
+        <Route path="/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
+        <Route path="/groups" element={<ProtectedRoute><GroupsList /></ProtectedRoute>} />
+        <Route path="/groups/:id" element={<ProtectedRoute><GroupDetailPage /></ProtectedRoute>} />
+        <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
+        <Route path="/history" element={<ProtectedRoute><TravelHistory /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </div>
@@ -73,7 +92,8 @@ function App() {
   const [showPermissions, setShowPermissions] = useState(false);
 
   useEffect(() => {
-    // Always show permission requests for testing
+    // Ask once; the answer is remembered (handlePermissionsComplete sets the flag)
+    if (localStorage.getItem('liveTrip-permissions-requested')) return;
     const timer = setTimeout(() => {
       setShowPermissions(true);
     }, 1000);

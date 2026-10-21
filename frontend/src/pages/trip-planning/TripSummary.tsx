@@ -21,7 +21,7 @@ const TripSummary: React.FC = () => {
   };
 
   const handleViewItinerary = () => {
-    navigate('/itinerary');
+    navigate(tripData.itineraryId ? `/trips/${tripData.itineraryId}` : '/itinerary');
   };
 
   const getDuration = () => {

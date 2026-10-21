@@ -27,9 +27,13 @@ import ReviewCard from "@/components/review-card";
 import { apiRequest } from "@/lib/queryClient";
 import { insertReviewSchema } from "@shared/schema";
 import type { DestinationWithReviews } from "@shared/schema";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function DestinationPage() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [reviewForm, setReviewForm] = useState({
@@ -66,8 +70,13 @@ export default function DestinationPage() {
   });
 
   const handleSubmitReview = () => {
+    if (!user) {
+      navigate(`/login?next=/destinations/${id}`);
+      return;
+    }
     const reviewData = {
       ...reviewForm,
+      userId: user.id, // the schema requires it; the server uses the signed-in account
       destinationId: id
     };
 
