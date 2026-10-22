@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from database import Base, SessionLocal, engine
-from . import accounts, planning, photos, recommend, rewards, social
+from . import accounts, placeinfo, planning, photos, recommend, rewards, social
 from .seed import seed
 
 logger = logging.getLogger("livetrip")
@@ -28,5 +28,5 @@ def install(app: FastAPI) -> None:
     photos.PHOTO_DIR.mkdir(parents=True, exist_ok=True)
     app.mount("/uploads", StaticFiles(directory=photos.UPLOAD_DIR), name="uploads")
     app.add_exception_handler(Exception, _unexpected_error)
-    for module in (accounts, planning, recommend, photos, rewards, social):
+    for module in (accounts, planning, recommend, placeinfo, photos, rewards, social):
         app.include_router(module.router)

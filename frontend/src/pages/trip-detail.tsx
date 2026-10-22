@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  AlertTriangle, CheckCircle2, Clock, CloudRain, Download, Lock, MapPin, RefreshCw, SkipForward,
-  Star, Sun, Unlock, Camera, Users, Utensils, Bed, Bookmark, Route as RouteIcon,
+  AlertTriangle, CheckCircle2, CloudRain, Download, Lock, MapPin, RefreshCw, SkipForward,
+  Star, Sun, Unlock, Camera, Users, Bed, Bookmark, Route as RouteIcon, ChevronUp, ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,8 @@ import { api, currentPosition, describeAwards, Award, Place, Proposal, Slot, Tri
 import ProposalDialog from "@/components/livetrip/ProposalDialog";
 import PlaceList from "@/components/livetrip/PlaceList";
 import AssistantPanel from "@/components/livetrip/AssistantPanel";
+import PlaceCard from "@/components/livetrip/PlaceCard";
+import TripMap from "@/components/livetrip/TripMap";
 
 interface Weather {
   temperature: number;
@@ -56,6 +58,8 @@ export default function TripDetail() {
   const [stayBudget, setStayBudget] = useState("medium");
   const [matches, setMatches] = useState<{ wish: { id: number; name: string }; fits: boolean; ops: any[]; message: string }[]>([]);
   const [day, setDay] = useState("1");
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [dragId, setDragId] = useState<number | null>(null);
 
   const load = async () => {
     try {
@@ -180,158 +184,209 @@ export default function TripDetail() {
   if (!trip) return <div className="flex justify-center p-16"><RefreshCw className="w-8 h-8 animate-spin text-primary" /></div>;
 
   const openAlerts = alerts.filter((a) => !a.acknowledged);
+  const currentDay = trip.days.find((d) => String(d.day) === day) ?? trip.days[0];
+
+  const selectFromMap = (itemId: number) => {
+    setSelectedId(itemId);
+    document.getElementById(`stop-${itemId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const reorder = (dayNum: number, order: number[], message: string) =>
+    applyOps([{ op: "reorder", day: dayNum, order }], message);
+
+  const moveTo = (d: Trip["days"][number], fromId: number, toId: number) => {
+    const ids = d.time_slots.map((s) => s.item_id);
+    const without = ids.filter((x) => x !== fromId);
+    without.splice(without.indexOf(toId) + (ids.indexOf(fromId) < ids.indexOf(toId) ? 1 : 0), 0, fromId);
+    if (without.join() !== ids.join()) reorder(d.day, without, "Order updated");
+  };
+
+  const moveBy = (d: Trip["days"][number], itemId: number, delta: number) => {
+    const ids = d.time_slots.map((s) => s.item_id);
+    const i = ids.indexOf(itemId);
+    const j = i + delta;
+    if (j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    reorder(d.day, ids, "Order updated");
+  };
+
+  const slotActions = (s: Slot) => (
+    <>
+      {s.status === "planned" && (
+        <>
+          {s.kind === "visit" && (
+            <Button size="sm" onClick={() => checkIn(s)} disabled={busy === `checkin-${s.item_id}`}>
+              <CheckCircle2 className="w-4 h-4 mr-1" />Check in
+            </Button>
+          )}
+          {!s.locked && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => openReplace(s)}><RefreshCw className="w-4 h-4 mr-1" />Replace</Button>
+              <Button size="sm" variant="ghost" title="Skip" aria-label={`Skip ${s.activity.name}`}
+                      onClick={() => applyOps([{ op: "skip", item_id: s.item_id }], `Skipped ${s.activity.name}`)}>
+                <SkipForward className="w-4 h-4" />
+              </Button>
+            </>
+          )}
+          <Button size="sm" variant="ghost" title={s.locked ? "Unconfirm" : "Confirm (keep when rescheduling)"}
+                  aria-label={s.locked ? "Unconfirm" : "Confirm"} onClick={() => toggleLock(s)}>
+            {s.locked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+          </Button>
+        </>
+      )}
+      {s.status === "completed" && s.kind === "visit" && isAuthenticated && (
+        <>
+          <span className="flex items-center" aria-label="Rate this stop">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button key={n} onClick={() => rate(s, n)} title={`${n} star${n > 1 ? "s" : ""}`}>
+                <Star className="w-4 h-4 text-yellow-400 hover:fill-yellow-400" />
+              </button>
+            ))}
+          </span>
+          <Button size="sm" variant="outline" asChild>
+            <Link to={`/feed?trip=${id}&item=${s.item_id}`}><Camera className="w-4 h-4 mr-1" />Photo</Link>
+          </Button>
+        </>
+      )}
+    </>
+  );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 grid gap-6 lg:grid-cols-3">
-      <div className="lg:col-span-2 space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-bold">{trip.destination}</h1>
-            <p className="text-muted-foreground">
-              {trip.start_date} → {trip.end_date} · {trip.days.length} day{trip.days.length > 1 ? "s" : ""} ·{" "}
-              <Badge variant="secondary" className="capitalize">{trip.status}</Badge>
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <a href={`/api/itinerary/${id}/export?format=txt`}><Download className="w-4 h-4 mr-1" />Export</a>
-            </Button>
-            {isAuthenticated && trip.user_id && (
-              <Button variant="outline" size="sm" onClick={share} disabled={busy === "share"}>
-                <Users className="w-4 h-4 mr-1" />Plan with friends
-              </Button>
-            )}
-          </div>
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold capitalize">{trip.destination}</h1>
+          <p className="text-muted-foreground">
+            {trip.start_date} → {trip.end_date} · {trip.days.length} day{trip.days.length > 1 ? "s" : ""} ·{" "}
+            <Badge variant="secondary" className="capitalize">{trip.status}</Badge>
+          </p>
         </div>
-
-        {[trip.places_note, trip.distance_note].filter(Boolean).map((note) => (
-          <p key={note} className="text-xs text-muted-foreground flex items-center gap-1"><AlertTriangle className="w-3 h-3 shrink-0" />{note}</p>
-        ))}
-
-        {openAlerts.length > 0 && (
-          <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/30">
-            <CardContent className="pt-4 space-y-2">
-              {openAlerts.map((a) => (
-                <div key={a.id} className="flex items-start justify-between gap-2 text-sm">
-                  <span className="flex gap-2"><CloudRain className="w-4 h-4 mt-0.5 shrink-0" />{a.message}</span>
-                  <Button size="sm" variant="ghost" onClick={() => acknowledge(a)}>Dismiss</Button>
-                </div>
-              ))}
-              <Button size="sm" onClick={() => propose("weather", "Weather changes")} disabled={!!busy}>Review weather changes</Button>
-            </CardContent>
-          </Card>
-        )}
-
-        <Tabs value={day} onValueChange={setDay}>
-          <TabsList className="flex-wrap h-auto">
-            {trip.days.map((d) => {
-              const f = weather?.trip_forecast?.[d.day - 1];
-              return (
-                <TabsTrigger key={d.day} value={String(d.day)} className="gap-1">
-                  Day {d.day}
-                  {f?.wet ? <CloudRain className="w-3 h-3 text-blue-500" /> : f?.temp_max !== undefined ? <Sun className="w-3 h-3 text-amber-500" /> : null}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-          {trip.days.map((d) => (
-            <TabsContent key={d.day} value={String(d.day)} className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-                <span>
-                  {new Date(d.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
-                  {weather?.trip_forecast?.[d.day - 1] && ` · ${weather.trip_forecast[d.day - 1].condition}`}
-                  {weather?.trip_forecast?.[d.day - 1]?.temp_max !== undefined &&
-                    ` ${Math.round(weather.trip_forecast[d.day - 1].temp_min!)}–${Math.round(weather.trip_forecast[d.day - 1].temp_max!)}°C`}
-                  {` · ${d.total_travel_time} min travel`}
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => propose("relaxed", "A more relaxed day", { day: d.day })} disabled={!!busy}>Make it relaxed</Button>
-                  <Button size="sm" variant="outline" onClick={() => run("optimize", async () => {
-                    setTrip(await api<Trip>(`/api/itinerary/${id}/route-optimization?day_index=${d.day - 1}`, { method: "POST" }));
-                    toast({ title: "Route reordered to cut travel" });
-                  })} disabled={!!busy}><RouteIcon className="w-4 h-4 mr-1" />Optimise route</Button>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <span>Running late?</span>
-                <Input className="w-20 h-8" type="number" min={5} max={600} value={lateMinutes} onChange={(e) => setLateMinutes(e.target.value)} />
-                <span>min</span>
-                <Button size="sm" variant="outline" disabled={!!busy}
-                        onClick={() => propose("delay", "Shift the rest of the day", { day: d.day, minutes: Number(lateMinutes) || 30 })}>
-                  Adjust schedule
-                </Button>
-              </div>
-
-              {d.time_slots.length === 0 && <p className="text-muted-foreground">Nothing planned for this day yet.</p>}
-              {d.time_slots.map((s) => (
-                <Card key={s.item_id} className={s.status === "skipped" ? "opacity-50" : ""}>
-                  <CardContent className="py-3 flex flex-col sm:flex-row sm:items-center gap-3">
-                    <div className="w-24 shrink-0 text-sm">
-                      <p className="font-semibold flex items-center"><Clock className="w-3 h-3 mr-1" />{s.start_time}</p>
-                      <p className="text-muted-foreground text-xs">to {s.end_time}</p>
-                      {s.travel_min > 0 && <p className="text-xs text-muted-foreground">{s.travel_min} min travel</p>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-medium ${s.status === "skipped" ? "line-through" : ""}`}>
-                        {s.kind === "meal" && <Utensils className="w-4 h-4 inline mr-1 -mt-0.5" />}
-                        {s.activity.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground flex flex-wrap gap-2 items-center">
-                        <span className="capitalize">{s.activity.activity_type}</span>
-                        {s.activity.rating > 0 && <span className="flex items-center"><Star className="w-3 h-3 mr-0.5 fill-yellow-400 text-yellow-400" />{s.activity.rating}</span>}
-                        {s.activity.weather_dependent && <span>outdoor</span>}
-                        {s.status === "completed" && <Badge className="bg-green-600">visited</Badge>}
-                        {s.status === "skipped" && <Badge variant="secondary">skipped</Badge>}
-                        {s.locked && <Badge variant="outline">confirmed</Badge>}
-                        {s.overflow && <Badge variant="destructive">runs late</Badge>}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {s.status === "planned" && (
-                        <>
-                          {s.kind === "visit" && (
-                            <Button size="sm" onClick={() => checkIn(s)} disabled={busy === `checkin-${s.item_id}`}>
-                              <CheckCircle2 className="w-4 h-4 mr-1" />Check in
-                            </Button>
-                          )}
-                          {!s.locked && (
-                            <>
-                              <Button size="sm" variant="outline" onClick={() => openReplace(s)}><RefreshCw className="w-4 h-4 mr-1" />Replace</Button>
-                              <Button size="sm" variant="ghost" title="Skip"
-                                      onClick={() => applyOps([{ op: "skip", item_id: s.item_id }], `Skipped ${s.activity.name}`)}>
-                                <SkipForward className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                          <Button size="sm" variant="ghost" title={s.locked ? "Unconfirm" : "Confirm (keep when rescheduling)"} onClick={() => toggleLock(s)}>
-                            {s.locked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                          </Button>
-                        </>
-                      )}
-                      {s.status === "completed" && s.kind === "visit" && isAuthenticated && (
-                        <>
-                          <span className="flex items-center" aria-label="Rate this stop">
-                            {[1, 2, 3, 4, 5].map((n) => (
-                              <button key={n} onClick={() => rate(s, n)} title={`${n} star${n > 1 ? "s" : ""}`}>
-                                <Star className="w-4 h-4 text-yellow-400 hover:fill-yellow-400" />
-                              </button>
-                            ))}
-                          </span>
-                          <Button size="sm" variant="outline" asChild>
-                            <Link to={`/feed?trip=${id}&item=${s.item_id}`}><Camera className="w-4 h-4 mr-1" />Photo</Link>
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </TabsContent>
-          ))}
-        </Tabs>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/api/itinerary/${id}/export?format=txt`}><Download className="w-4 h-4 mr-1" />Export</a>
+          </Button>
+          {isAuthenticated && trip.user_id && (
+            <Button variant="outline" size="sm" onClick={share} disabled={busy === "share"}>
+              <Users className="w-4 h-4 mr-1" />Plan with friends
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="space-y-4">
+      {[trip.places_note, trip.distance_note].filter(Boolean).map((note) => (
+        <p key={note} className="text-xs text-muted-foreground flex items-center gap-1"><AlertTriangle className="w-3 h-3 shrink-0" />{note}</p>
+      ))}
+
+      {openAlerts.length > 0 && (
+        <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/30">
+          <CardContent className="pt-4 space-y-2">
+            {openAlerts.map((a) => (
+              <div key={a.id} className="flex items-start justify-between gap-2 text-sm">
+                <span className="flex gap-2"><CloudRain className="w-4 h-4 mt-0.5 shrink-0" />{a.message}</span>
+                <Button size="sm" variant="ghost" onClick={() => acknowledge(a)}>Dismiss</Button>
+              </div>
+            ))}
+            <Button size="sm" onClick={() => propose("weather", "Weather changes")} disabled={!!busy}>Review weather changes</Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-12">
+        <div className="lg:col-span-7 min-w-0">
+          <Tabs value={day} onValueChange={(v) => { setDay(v); setSelectedId(null); }}>
+            <TabsList className="flex-wrap h-auto">
+              {trip.days.map((d) => {
+                const f = weather?.trip_forecast?.[d.day - 1];
+                return (
+                  <TabsTrigger key={d.day} value={String(d.day)} className="gap-1">
+                    Day {d.day}
+                    {f?.wet ? <CloudRain className="w-3 h-3 text-blue-500" /> : f?.temp_max !== undefined ? <Sun className="w-3 h-3 text-amber-500" /> : null}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+            {trip.days.map((d) => {
+              const visitNumbers = new Map(d.time_slots.filter((s) => s.kind === "visit").map((s, i) => [s.item_id, i + 1]));
+              return (
+                <TabsContent key={d.day} value={String(d.day)} className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+                    <span>
+                      {new Date(d.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
+                      {weather?.trip_forecast?.[d.day - 1] && ` · ${weather.trip_forecast[d.day - 1].condition}`}
+                      {weather?.trip_forecast?.[d.day - 1]?.temp_max !== undefined &&
+                        ` ${Math.round(weather.trip_forecast[d.day - 1].temp_min!)}–${Math.round(weather.trip_forecast[d.day - 1].temp_max!)}°C`}
+                      {` · ${d.total_travel_time} min travel`}
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" onClick={() => propose("relaxed", "A more relaxed day", { day: d.day })} disabled={!!busy}>Make it relaxed</Button>
+                      <Button size="sm" variant="outline" onClick={() => run("optimize", async () => {
+                        setTrip(await api<Trip>(`/api/itinerary/${id}/route-optimization?day_index=${d.day - 1}`, { method: "POST" }));
+                        toast({ title: "Route reordered to cut travel" });
+                      })} disabled={!!busy}><RouteIcon className="w-4 h-4 mr-1" />Optimise route</Button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span>Running late?</span>
+                    <Input className="w-20 h-8" type="number" min={5} max={600} value={lateMinutes} onChange={(e) => setLateMinutes(e.target.value)} />
+                    <span>min</span>
+                    <Button size="sm" variant="outline" disabled={!!busy}
+                            onClick={() => propose("delay", "Shift the rest of the day", { day: d.day, minutes: Number(lateMinutes) || 30 })}>
+                      Adjust schedule
+                    </Button>
+                    <span className="text-xs text-muted-foreground ml-auto">Drag cards (or use the arrows) to change the order.</span>
+                  </div>
+
+                  {d.time_slots.length === 0 && <p className="text-muted-foreground">Nothing planned for this day yet.</p>}
+                  {d.time_slots.map((s, index) => {
+                    const movable = s.status === "planned" && !s.locked;
+                    return (
+                      <div key={s.item_id}
+                           className={dragId !== null && dragId !== s.item_id ? "rounded-lg outline-dashed outline-2 outline-transparent hover:outline-primary/40" : ""}
+                           onDragOver={(e) => { if (dragId !== null) e.preventDefault(); }}
+                           onDrop={(e) => { e.preventDefault(); if (dragId !== null && dragId !== s.item_id) moveTo(d, dragId, s.item_id); setDragId(null); }}>
+                        <PlaceCard
+                          slot={s}
+                          number={visitNumbers.get(s.item_id)}
+                          city={trip.destination}
+                          selected={selectedId === s.item_id}
+                          onSelect={() => setSelectedId(s.item_id)}
+                          actions={slotActions(s)}
+                          dragProps={movable ? {
+                            draggable: true,
+                            onDragStart: (e) => { setDragId(s.item_id); e.dataTransfer.effectAllowed = "move"; },
+                            onDragEnd: () => setDragId(null),
+                          } : undefined}
+                          moveControls={movable ? (
+                            <span onClick={(e) => e.stopPropagation()} className="flex">
+                              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Move earlier" disabled={index === 0 || !!busy}
+                                      onClick={() => moveBy(d, s.item_id, -1)}><ChevronUp className="w-4 h-4" /></Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Move later" disabled={index === d.time_slots.length - 1 || !!busy}
+                                      onClick={() => moveBy(d, s.item_id, 1)}><ChevronDown className="w-4 h-4" /></Button>
+                            </span>
+                          ) : undefined}
+                        />
+                      </div>
+                    );
+                  })}
+                </TabsContent>
+              );
+            })}
+          </Tabs>
+        </div>
+
+        <div className="lg:col-span-5 order-first lg:order-none">
+          <div className="lg:sticky lg:top-20 space-y-2">
+            <div className="h-72 sm:h-[420px] lg:h-[calc(100vh-8rem)] lg:max-h-[760px] rounded-lg border overflow-hidden shadow-sm">
+              <TripMap slots={currentDay?.time_slots ?? []} selectedId={selectedId} onSelect={selectFromMap} start={trip.start_location} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Day {currentDay?.day}: numbers show the visiting order, 🍽 marks meals. Click a marker to jump to its card.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-lg">Live weather</CardTitle></CardHeader>
           <CardContent className="text-sm">
@@ -347,24 +402,10 @@ export default function TripDetail() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lg:row-span-2">
           <CardHeader className="pb-2"><CardTitle className="text-lg">Travel assistant</CardTitle></CardHeader>
           <CardContent><AssistantPanel tripId={id} onTripChanged={setTrip} /></CardContent>
         </Card>
-
-        {matches.length > 0 && (
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-lg flex items-center gap-2"><Bookmark className="w-4 h-4" />Saved places for this trip</CardTitle></CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {matches.map((m) => (
-                <div key={m.wish.id} className="flex items-center justify-between gap-2">
-                  <span>{m.wish.name}<span className="block text-xs text-muted-foreground">{m.message}</span></span>
-                  {m.fits && <Button size="sm" variant="outline" onClick={() => applyOps(m.ops, `Added ${m.wish.name}`)}>Add</Button>}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
 
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-lg flex items-center gap-2"><Bed className="w-4 h-4" />Where to stay</CardTitle></CardHeader>
@@ -384,6 +425,20 @@ export default function TripDetail() {
             {stays && <p className="text-xs text-muted-foreground">Sorted by distance to your planned stops. Prices and availability are not live.</p>}
           </CardContent>
         </Card>
+
+        {matches.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-lg flex items-center gap-2"><Bookmark className="w-4 h-4" />Saved places for this trip</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {matches.map((m) => (
+                <div key={m.wish.id} className="flex items-center justify-between gap-2">
+                  <span>{m.wish.name}<span className="block text-xs text-muted-foreground">{m.message}</span></span>
+                  {m.fits && <Button size="sm" variant="outline" onClick={() => applyOps(m.ops, `Added ${m.wish.name}`)}>Add</Button>}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <ProposalDialog tripId={id!} proposal={proposal?.p ?? null} title={proposal?.title} onClose={() => setProposal(null)} onApplied={setTrip} />

@@ -206,6 +206,47 @@ def test_unexpected_errors_return_a_readable_message(app, monkeypatch):
     assert "RuntimeError: database is locked" in r.json()["detail"]
 
 
+def test_place_info_matches_the_right_article_and_credits_photos(app, monkeypatch):
+    import asyncio
+    from livetrip import placeinfo
+    from fastapi import HTTPException
+
+    assert placeinfo._best("Charminar", ["Charminar Assembly constituency", "Charminar", "Charminar metro station"]) == "Charminar"
+    assert placeinfo._best("Fort Aguada", ["Taj Fort Aguada Resort", "Fort Aguada"]) == "Fort Aguada"
+    assert placeinfo._best("Hotel Panchsheel Pakwaan", ["Hyderabad", "Golconda"]) is None
+
+    async def fake_get(url, params):
+        if "rest_v1" in url:
+            return {"extract": " Fort Aguada is a 17th-century Portuguese fort. ",
+                    "content_urls": {"desktop": {"page": "https://en.wikipedia.org/wiki/Fort_Aguada"}},
+                    "originalimage": {"source": "https://upload.wikimedia.org/x/Fort_aguada.jpg"}}
+        if params.get("list") == "geosearch":
+            return {"query": {"geosearch": [{"title": "Taj Fort Aguada Resort"}, {"title": "Fort Aguada"}]}}
+        if "commons" in url:
+            page = {"title": "File:Fort aguada.jpg", "imageinfo": [{"thumburl": "https://thumb/Fort_aguada.jpg",
+                    "mime": "image/jpeg", "extmetadata": {"Artist": {"value": "<a>Jane Doe</a>"},
+                                                          "LicenseShortName": {"value": "CC BY-SA 4.0"}}}]}
+            plan = {"title": "File:Fort plan.svg", "imageinfo": [{"thumburl": "https://thumb/plan.png", "mime": "image/svg+xml"}]}
+            return {"query": {"pages": [page, plan]}}
+        return {}
+
+    monkeypatch.setattr(placeinfo, "_get", fake_get)
+    placeinfo._cache.clear()
+    info = asyncio.run(placeinfo.place_info("Fort Aguada", 15.4923, 73.7735, "Goa"))
+    assert info["article"] == "Fort Aguada" and info["description"].startswith("Fort Aguada is")
+    assert info["photos"] == [{"url": "https://thumb/Fort_aguada.jpg", "author": "Jane Doe", "license": "CC BY-SA 4.0",
+                               "source_url": "https://commons.wikimedia.org/wiki/File%3AFort_aguada.jpg"}]
+
+    async def down(url, params):
+        raise HTTPException(503, "Wikipedia unavailable")
+
+    monkeypatch.setattr(placeinfo, "_get", down)
+    placeinfo._cache.clear()
+    empty = asyncio.run(placeinfo.place_info("Somewhere", 1.0, 2.0, "X"))
+    assert empty["description"] is None and empty["photos"] == []  # optional extras never break the page
+    placeinfo._cache.clear()
+
+
 def test_wikipedia_sights_keep_only_places_to_visit(monkeypatch):
     import asyncio
     from livetrip import osm

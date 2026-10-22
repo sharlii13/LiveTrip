@@ -526,13 +526,23 @@ def _prefs_from_trip_in(body: TripIn) -> Dict[str, Any]:
             "pets": bool(body.withPets), "mode": mode, "eco": bool(body.ecoMode)}
 
 
+def _with_prefetch(db: Session, trip: Trip) -> Dict[str, Any]:
+    """Serialise a new trip and start fetching its stops' descriptions and photos in the background."""
+    from . import placeinfo
+    out = itinerary_out(db, trip)
+    stops = [s["activity"] for d in out["days"] for s in d["time_slots"] if s["kind"] == "visit"]
+    placeinfo.prefetch([{"name": a["name"], "lat": a["location"]["latitude"], "lng": a["location"]["longitude"]}
+                        for a in stops], trip.destination)
+    return out
+
+
 @router.post("/trips")
 async def create_trip(body: TripIn, user: Optional[User] = Depends(optional_user), db: Session = Depends(get_db)):
     start = _parse_date(body.startDate, date.today())
     end = _parse_date(body.endDate, start)
     trip = await generate(db, user, body.destination.strip(), start, end, _prefs_from_trip_in(body),
                           body.hotel, body.mustVisit)
-    return itinerary_out(db, trip)
+    return _with_prefetch(db, trip)
 
 
 @router.post("/itinerary/create")
@@ -546,7 +556,7 @@ async def create_itinerary(body: CreateItineraryIn, user: Optional[User] = Depen
     start = _parse_date(body.start_date, date.today())
     trip = await generate(db, user, body.destination.strip(), start, _parse_date(body.end_date, start), prefs,
                           None, body.must_visit_places)
-    return itinerary_out(db, trip)
+    return _with_prefetch(db, trip)
 
 
 class ClaimIn(BaseModel):
