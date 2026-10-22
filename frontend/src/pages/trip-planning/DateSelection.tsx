@@ -56,7 +56,7 @@ const DateSelection: React.FC = () => {
   };
 
   const isDateDisabled = (date: Date) => {
-    return date < new Date();
+    return date < new Date(new Date().setHours(0, 0, 0, 0));  // today is allowed
   };
 
   return (

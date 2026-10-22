@@ -23,7 +23,6 @@ interface TripSummary {
   completed: number;
 }
 
-const INTERESTS = ["culture", "history", "nature", "adventure", "food", "nightlife", "shopping", "relaxation"];
 const today = () => localDate();
 
 export default function Trips() {
@@ -34,10 +33,7 @@ export default function Trips() {
   const [destination, setDestination] = useState("");
   const [start, setStart] = useState(today());
   const [end, setEnd] = useState(today());
-  const [interests, setInterests] = useState<string[]>(["culture"]);
   const [food, setFood] = useState("both");
-  const [pace, setPace] = useState("normal");
-  const [transport, setTransport] = useState("car");
   const [travelers, setTravelers] = useState("2");
   const [mustVisit, setMustVisit] = useState("");
   const [creating, setCreating] = useState(false);
@@ -57,8 +53,6 @@ export default function Trips() {
       })));
   }, [isAuthenticated]);
 
-  const toggle = (i: string) => setInterests((list) => (list.includes(i) ? list.filter((x) => x !== i) : [...list, i]));
-
   const create = async (e: FormEvent) => {
     e.preventDefault();
     setCreating(true);
@@ -66,8 +60,8 @@ export default function Trips() {
       const trip = await api<Trip>("/api/trips", {
         method: "POST",
         json: {
-          destination, startDate: start, endDate: end, interests, foodPreference: food, pace,
-          transportPreference: transport, travelers: Number(travelers) || 1,
+          destination, startDate: start, endDate: end, foodPreference: food, pace: "normal",
+          transportPreference: "car", travelers: Number(travelers) || 1,
           mustVisit: mustVisit.split(",").map((s) => s.trim()).filter(Boolean),
         },
       });
@@ -125,17 +119,6 @@ export default function Trips() {
               <div className="space-y-1"><Label htmlFor="start">From</Label><Input id="start" type="date" value={start} onChange={(e) => setStart(e.target.value)} required /></div>
               <div className="space-y-1"><Label htmlFor="end">To</Label><Input id="end" type="date" value={end} min={start} onChange={(e) => setEnd(e.target.value)} required /></div>
             </div>
-            <div className="space-y-1">
-              <Label>Interests</Label>
-              <div className="flex flex-wrap gap-1">
-                {INTERESTS.map((i) => (
-                  <button type="button" key={i} onClick={() => toggle(i)} aria-pressed={interests.includes(i)}
-                          className={`text-xs capitalize rounded-full border px-2 py-1 ${interests.includes(i) ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
-                    {i}
-                  </button>
-                ))}
-              </div>
-            </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label>Food</Label>
@@ -145,29 +128,6 @@ export default function Trips() {
                     <SelectItem value="both">No preference</SelectItem>
                     <SelectItem value="vegetarian">Vegetarian</SelectItem>
                     <SelectItem value="non-vegetarian">Non-vegetarian</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label>Pace</Label>
-                <Select value={pace} onValueChange={setPace}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="relaxed">Relaxed</SelectItem>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="fast">Packed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label>Getting around</Label>
-                <Select value={transport} onValueChange={setTransport}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="car">Car / taxi</SelectItem>
-                    <SelectItem value="public-transport">Public transport</SelectItem>
-                    <SelectItem value="walking">Walking</SelectItem>
-                    <SelectItem value="bicycle">Bicycle</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

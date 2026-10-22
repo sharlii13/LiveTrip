@@ -115,7 +115,7 @@ const EcoModeSelection: React.FC = () => {
   };
 
   const handleBack = () => {
-    navigate('/trip-planning/interests');
+    navigate('/trip-planning/food-preferences');
   };
 
   const getEcoScoreColor = (score: number) => {
@@ -252,12 +252,6 @@ const EcoModeSelection: React.FC = () => {
                   <Badge variant="outline">
                     {tripData.foodPreference ? tripData.foodPreference.charAt(0).toUpperCase() + tripData.foodPreference.slice(1) : 'Unknown'}
                   </Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span>Interests:</span>
-                  <span className="text-blue-600 font-medium">
-                    {tripData.interests.length} selected
-                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Eco Mode:</span>

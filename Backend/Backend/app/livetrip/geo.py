@@ -1,6 +1,7 @@
 """Places search, live weather, distances and travel-time estimates."""
 import asyncio
 import math
+import re
 import time
 from datetime import date
 from typing import Dict, List, Optional, Tuple
@@ -26,6 +27,17 @@ VISIT_MINUTES = {"museum": 90, "park": 60, "nature": 120, "religious": 45, "hist
                  "food": 60, "entertainment": 120, "culture": 75, "lodging": 0}
 SPEED_KMH = {"walking": 4.5, "bicycle": 14, "public-transport": 20, "transit": 20, "train": 30, "driving": 25, "car": 25}
 ROAD_FACTOR = 1.3  # straight line -> road distance
+
+
+SERVICE_TYPES = {"tour_agency", "travel_agency", "tourist_information_center", "taxi_service",
+                 "transportation_service", "real_estate_agency", "car_rental"}
+SERVICE_NAME = re.compile(r"^things to do\b|sightseeing (tour|package)|\btours? (and|&) travels?\b|\btour packages?\b",
+                          re.IGNORECASE)
+
+
+def is_service(types: List[str], name: str) -> bool:
+    """Tour operators, taxis and info desks show up in 'attractions' searches but are not places to visit."""
+    return bool(SERVICE_TYPES & set(types or [])) or bool(SERVICE_NAME.search(name or ""))
 
 
 def categorize(types: List[str]) -> str:
@@ -115,6 +127,8 @@ async def _google_text_search(query: str, near: Optional[Tuple[float, float]]) -
         raise HTTPException(status_code=503, detail=f"Google Places unreachable ({e.__class__.__name__})")
     out = []
     for p in places:
+        if is_service(p.types, p.name):
+            continue
         category = categorize(p.types)
         out.append({
             "name": p.name, "place_id": p.place_id, "address": p.formatted_address,

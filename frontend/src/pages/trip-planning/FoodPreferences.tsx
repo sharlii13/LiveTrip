@@ -48,7 +48,7 @@ const FoodPreferences: React.FC = () => {
       updateTripData({
         foodPreference: selectedPreference as any,
       });
-      navigate('/trip-planning/interests');
+      navigate('/trip-planning/eco-mode');
     }
   };
 

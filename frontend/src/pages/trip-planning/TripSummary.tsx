@@ -136,33 +136,10 @@ const TripSummary: React.FC = () => {
                       {tripData.ecoMode ? 'Enabled' : 'Disabled'}
                     </Badge>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Interests:</span>
-                    <span className="font-medium text-blue-600">
-                      {tripData.interests.length} selected
-                    </span>
-                  </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Selected Interests */}
-            {tripData.interests.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Your Interests</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {tripData.interests.map((interest) => (
-                      <Badge key={interest} variant="secondary" className="bg-blue-100 text-blue-800">
-                        {interest}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Emergency Contact */}
             {tripData.emergencyContact && (

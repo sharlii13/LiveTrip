@@ -133,7 +133,13 @@ def _parse_date(value: Optional[str], fallback: date) -> date:
 
 
 def _open_close(hours: List[str]) -> Tuple[str, str]:
-    """Parse '9:00 AM – 5:30 PM' (Google) or 'Mo-Su 09:00-17:30' (OpenStreetMap); default 09:00-18:00."""
+    """Parse '9:00 AM – 5:30 PM' (Google) or 'Mo-Su 09:00-17:30' (OpenStreetMap); default 09:00-18:00.
+    Places open past midnight (e.g. 6 PM – 1 AM) count as open until the end of the day."""
+    open_t, close_t = _parse_hours(hours)
+    return open_t, (close_t if close_t > open_t else "23:59")
+
+
+def _parse_hours(hours: List[str]) -> Tuple[str, str]:
     for line in hours[:1]:
         if "24 hours" in line or "24/7" in line:
             return "00:00", "23:59"
@@ -374,9 +380,12 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
         open_t, close_t = _open_close(p.get("hours", []))
         cat = p["category"] if p["category"] in UserPreferences.model_fields else "culture"
         score = 10.0 if p in forced else place_score(p["rating"], p["rating_count"])
-        poi_list.append(MultiDayPOI(id=idx, name=p["name"], lat=p["lat"], lng=p["lng"],
-                                    duration=VISIT_MINUTES.get(p["category"], 75) / 60, open=open_t, close=close_t,
-                                    category=cat, score=round(score, 2)))
+        try:
+            poi_list.append(MultiDayPOI(id=idx, name=p["name"], lat=p["lat"], lng=p["lng"],
+                                        duration=VISIT_MINUTES.get(p["category"], 75) / 60, open=open_t, close=close_t,
+                                        category=cat, score=round(score, 2)))
+        except ValueError as e:  # one place with odd data must never sink the whole trip
+            logger.warning(f"Skipping {p['name']}: {e}")
     state = {"estimated": False}
     distance_source.set(state)
     request = MultiDayPlanRequest(

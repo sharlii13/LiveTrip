@@ -1,4 +1,9 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
+
+// The step-by-step pages, in order; the progress bar follows the page you are on
+const FLOW = ['/trip-planning/dates', '/trip-planning/company', '/trip-planning/food-preferences',
+              '/trip-planning/eco-mode', '/trip-planning/summary'];
 
 export interface TripPlanningData {
   destination: string;
@@ -60,8 +65,10 @@ interface TripPlanningProviderProps {
 
 export const TripPlanningProvider: React.FC<TripPlanningProviderProps> = ({ children }) => {
   const [tripData, setTripData] = useState<TripPlanningData>(initialTripData);
-  const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 8;
+  const [stepState, setCurrentStep] = useState(1);
+  const routeStep = FLOW.indexOf(useLocation().pathname) + 1;
+  const currentStep = routeStep || stepState;
+  const totalSteps = FLOW.length;
 
   const updateTripData = (updates: Partial<TripPlanningData>) => {
     setTripData(prev => ({ ...prev, ...updates }));

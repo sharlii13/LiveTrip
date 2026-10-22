@@ -46,7 +46,7 @@ export default function TripDetail() {
   const { toast } = useToast();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [weather, setWeather] = useState<Weather | null>(null);
+  const [weather, setWeather] = useState<Weather | null | undefined>(undefined);  // undefined = still loading
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [proposal, setProposal] = useState<{ p: Proposal; title: string } | null>(null);
   const [replacing, setReplacing] = useState<Slot | null>(null);
@@ -398,7 +398,7 @@ export default function TripDetail() {
                   <CloudRain className="w-4 h-4 mr-1" />Check outdoor plans
                 </Button>
               </>
-            ) : <p className="text-muted-foreground">Weather is unavailable right now.</p>}
+            ) : <p className="text-muted-foreground">{weather === undefined ? "Loading weather..." : "Weather is unavailable right now."}</p>}
           </CardContent>
         </Card>
 

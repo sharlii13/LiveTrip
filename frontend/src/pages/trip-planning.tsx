@@ -36,9 +36,6 @@ export default function TripPlanning() {
   const [selectedInterests, setSelectedInterests] = useState<string[]>(tripData.interests || []);
   const [ecoMode, setEcoMode] = useState<boolean>(tripData.ecoMode);
   const [selectedTransport, setSelectedTransport] = useState<string>('');
-  const [isMultiDay, setIsMultiDay] = useState<boolean>(false);
-  const [travelMode, setTravelMode] = useState<"driving" | "walking" | "transit">("walking");
-  const [travelPace, setTravelPace] = useState<"slow" | "normal" | "fast">("normal");
   
   // Emergency contact states
   const [emergencyName, setEmergencyName] = useState('');
@@ -85,7 +82,7 @@ export default function TripPlanning() {
 
   // Trip planning handlers
   const handleNextStep = () => {
-    if (tripStep < 8) {
+    if (tripStep < 7) {
       setTripStep(tripStep + 1);
     } else if (!submitting) {
       setSubmitting(true);
@@ -106,7 +103,7 @@ export default function TripPlanning() {
         startDate: selectedDates.from,
         endDate: selectedDates.to,
         companyType: selectedCompany as any,
-        withPets: withPets,
+        withPets: !!withPets,
         foodPreference: selectedFoodPreference as any,
         interests: selectedInterests,
         ecoMode: ecoMode,
@@ -126,9 +123,7 @@ export default function TripPlanning() {
         if (!selectedDates.from || !selectedDates.to || !tripData.destination) {
           throw new Error('Missing required trip information');
         }
-        // the walking/transit picker only shows for multi-day trips; otherwise assume car/taxi
-        const transport = selectedTransport
-          || (!isMultiDay ? 'car' : travelMode === 'walking' ? 'walking' : travelMode === 'transit' ? 'public-transport' : 'car');
+        const transport = selectedTransport || 'car';  // car/taxi unless chosen on the eco step
         const trip = await api<{ id: string }>('/api/trips', {
           method: 'POST',
           json: {
@@ -136,12 +131,12 @@ export default function TripPlanning() {
             startDate: toLocalDate(selectedDates.from),
             endDate: toLocalDate(selectedDates.to),
             companyType: selectedCompany,
-            withPets,
+            withPets: !!withPets,
             foodPreference: selectedFoodPreference,
             interests: selectedInterests,
             ecoMode,
             transportPreference: transport,
-            pace: travelPace === 'slow' ? 'relaxed' : travelPace,
+            pace: 'normal',
             budget: tripData.budget,
           },
         });
@@ -179,11 +174,11 @@ export default function TripPlanning() {
                 Back to Home
               </Button>
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">Step {tripStep} of 8</span>
+                <span className="text-sm text-gray-600">Step {tripStep} of 7</span>
                 <div className="w-32 bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(tripStep / 8) * 100}%` }}
+                    style={{ width: `${(tripStep / 7) * 100}%` }}
                   ></div>
                 </div>
               </div>
@@ -192,21 +187,19 @@ export default function TripPlanning() {
               {tripStep === 1 && "When are you going?"}
               {tripStep === 2 && "What kind of trip are you planning?"}
               {tripStep === 3 && "What are your food preferences?"}
-              {tripStep === 4 && "What are your interests?"}
-              {tripStep === 5 && "Choose your eco-friendly options"}
-              {tripStep === 6 && "Emergency Contact Information"}
-              {tripStep === 7 && "Language Preferences"}
-              {tripStep === 8 && "Trip Summary"}
+              {tripStep === 4 && "Choose your eco-friendly options"}
+              {tripStep === 5 && "Emergency Contact Information"}
+              {tripStep === 6 && "Language Preferences"}
+              {tripStep === 7 && "Trip Summary"}
             </CardTitle>
             <CardDescription className="text-lg text-gray-600">
               {tripStep === 1 && "Choose a date range, up to 7 days"}
               {tripStep === 2 && "Select one"}
               {tripStep === 3 && "This helps us recommend the best restaurants and dining experiences"}
-              {tripStep === 4 && "Select all that apply"}
-              {tripStep === 5 && "Help us make your trip more sustainable"}
-              {tripStep === 6 && "For your safety during the trip"}
-              {tripStep === 7 && "Select languages you're comfortable with"}
-              {tripStep === 8 && "Review your trip details"}
+              {tripStep === 4 && "Help us make your trip more sustainable"}
+              {tripStep === 5 && "For your safety during the trip"}
+              {tripStep === 6 && "Select languages you're comfortable with"}
+              {tripStep === 7 && "Review your trip details"}
             </CardDescription>
           </CardHeader>
           
@@ -237,61 +230,6 @@ export default function TripPlanning() {
                   </div>
                 </div>
                 
-                {/* Multi-day Trip Options */}
-                <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <Calendar className="w-6 h-6 text-blue-600" />
-                      <div>
-                        <h3 className="text-lg font-semibold text-blue-800">Multi-Day Trip Planning</h3>
-                        <p className="text-sm text-blue-700">
-                          Enable advanced multi-day itinerary with optimized routes
-                        </p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={isMultiDay}
-                      onCheckedChange={setIsMultiDay}
-                      className="data-[state=checked]:bg-blue-600"
-                    />
-                  </div>
-                  
-                  {isMultiDay && getDuration() > 1 && (
-                    <div className="space-y-4 mt-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm font-medium text-blue-800">Travel Mode</Label>
-                          <Select value={travelMode} onValueChange={(value: "driving" | "walking" | "transit") => setTravelMode(value)}>
-                            <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="Select travel mode" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="walking">🚶 Walking</SelectItem>
-                              <SelectItem value="driving">🚗 Driving</SelectItem>
-                              <SelectItem value="transit">🚌 Public Transit</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium text-blue-800">Travel Pace</Label>
-                          <Select value={travelPace} onValueChange={(value: "slow" | "normal" | "fast") => setTravelPace(value)}>
-                            <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="Select pace" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="slow">🐌 Slow & Relaxed</SelectItem>
-                              <SelectItem value="normal">⚡ Normal Pace</SelectItem>
-                              <SelectItem value="fast">🏃 Fast & Efficient</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="text-sm text-blue-700 bg-blue-100 p-3 rounded">
-                        ✨ Multi-day planning will optimize your {getDuration()}-day itinerary with efficient routes and timing!
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             )}
 
@@ -359,42 +297,8 @@ export default function TripPlanning() {
               </div>
             )}
 
-            {/* Step 4: Interests */}
+            {/* Step 4: Eco-friendly Options */}
             {tripStep === 4 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {interestOptions.map((option) => {
-                  const isSelected = selectedInterests.includes(option.id);
-                  return (
-                    <div
-                      key={option.id}
-                      onClick={() => {
-                        if (isSelected) {
-                          setSelectedInterests(selectedInterests.filter(id => id !== option.id));
-                        } else {
-                          setSelectedInterests([...selectedInterests, option.id]);
-                        }
-                      }}
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                        isSelected
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 bg-white hover:border-blue-300'
-                      }`}
-                    >
-                      <div className="text-center">
-                        <div className="text-3xl mb-2">{option.icon}</div>
-                        <h3 className="text-sm font-semibold">{option.label}</h3>
-                        {isSelected && (
-                          <Check className="w-4 h-4 text-blue-600 mx-auto mt-2" />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Step 5: Eco Mode */}
-            {tripStep === 5 && (
               <div className="space-y-8">
                 <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
                   <div className="flex items-center justify-between">
@@ -457,8 +361,8 @@ export default function TripPlanning() {
               </div>
             )}
 
-            {/* Step 6: Emergency Contact */}
-            {tripStep === 6 && (
+            {/* Step 5: Emergency Contact */}
+            {tripStep === 5 && (
               <div className="space-y-6">
                 <div className="bg-red-50 border border-red-200 rounded-lg p-6">
                   <div className="flex items-center mb-4">
@@ -513,8 +417,8 @@ export default function TripPlanning() {
               </div>
             )}
 
-            {/* Step 7: Language Preferences */}
-            {tripStep === 7 && (
+            {/* Step 6: Language Preferences */}
+            {tripStep === 6 && (
               <div className="space-y-6">
                 <div className="bg-green-50 border border-green-200 rounded-lg p-6">
                   <div className="flex items-center mb-4">
@@ -568,8 +472,8 @@ export default function TripPlanning() {
               </div>
             )}
 
-            {/* Step 8: Trip Summary */}
-            {tripStep === 8 && (
+            {/* Step 7: Trip Summary */}
+            {tripStep === 7 && (
               <div className="space-y-6">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                   <div className="flex items-center mb-4">
@@ -621,18 +525,17 @@ export default function TripPlanning() {
                 onClick={handleNextStep}
                 disabled={
                   (tripStep === 1 && (!selectedDates.from || !selectedDates.to || getDuration() > 7)) ||
-                  (tripStep === 2 && (!selectedCompany || withPets === null)) ||
+                  (tripStep === 2 && !selectedCompany) ||
                   (tripStep === 3 && !selectedFoodPreference) ||
-                  (tripStep === 4 && selectedInterests.length === 0) ||
-                  (tripStep === 6 && (!emergencyName.trim() || !emergencyPhone.trim() || !emergencyRelation.trim())) ||
-                  (tripStep === 7 && selectedLanguages.length === 0) ||
+                  (tripStep === 5 && (!emergencyName.trim() || !emergencyPhone.trim() || !emergencyRelation.trim())) ||
+                  (tripStep === 6 && selectedLanguages.length === 0) ||
                   submitting
                 }
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {tripStep === 8 ? (submitting ? 'Building your itinerary...' : 'Create Trip Plan') : 'Next'}
-                {tripStep < 8 && <ChevronRight className="w-4 h-4 ml-2" />}
+                {tripStep === 7 ? (submitting ? 'Building your itinerary...' : 'Create Trip Plan') : 'Next'}
+                {tripStep < 7 && <ChevronRight className="w-4 h-4 ml-2" />}
               </Button>
             </div>
           </CardContent>

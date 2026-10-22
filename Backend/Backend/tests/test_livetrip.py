@@ -101,6 +101,16 @@ def test_create_itinerary_frontend_contract(client):
     assert "Hawa Mahal" in names  # must-visit places are always scheduled
 
 
+def test_opening_hours_parsing_handles_late_and_odd_hours():
+    from livetrip.planning import _open_close
+    assert _open_close(["Monday: 9:00 AM – 5:30 PM"]) == ("09:00", "17:30")
+    assert _open_close(["Monday: 6:00 PM – 1:00 AM"]) == ("18:00", "23:59")  # open past midnight
+    assert _open_close(["Mo-Su 18:00-02:00"]) == ("18:00", "23:59")
+    assert _open_close(["Monday: Open 24 hours"]) == ("00:00", "23:59")
+    assert _open_close(["Monday: Closed"]) == ("09:00", "18:00")
+    assert _open_close([]) == ("09:00", "18:00")
+
+
 def test_date_picker_timestamps_keep_the_picked_day():
     from livetrip.planning import _parse_date
     fallback = date(2000, 1, 1)
@@ -245,6 +255,14 @@ def test_place_info_matches_the_right_article_and_credits_photos(app, monkeypatc
     empty = asyncio.run(placeinfo.place_info("Somewhere", 1.0, 2.0, "X"))
     assert empty["description"] is None and empty["photos"] == []  # optional extras never break the page
     placeinfo._cache.clear()
+
+
+def test_tour_operators_are_not_places_to_visit(app):
+    from livetrip.geo import is_service
+    assert is_service(["tour_agency", "travel_agency", "point_of_interest"], "Jaipur City Sightseeing")
+    assert is_service(["tourist_attraction"], "Things to do in Jaipur")
+    assert not is_service(["castle", "tourist_attraction"], "Hawa Mahal")
+    assert not is_service(["museum"], "Things Museum")
 
 
 def test_wikipedia_sights_keep_only_places_to_visit(monkeypatch):

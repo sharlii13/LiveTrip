@@ -187,7 +187,7 @@ export default function SearchPage() {
   ];
 
   const handleNextStep = () => {
-    if (tripStep < 8) {
+    if (tripStep < 7) {
       setTripStep(tripStep + 1);
     } else if (!submitting) {
       setSubmitting(true);
@@ -256,7 +256,7 @@ export default function SearchPage() {
   };
 
   const isDateDisabled = (date: Date) => {
-    return date < new Date();
+    return date < new Date(new Date().setHours(0, 0, 0, 0));  // today is allowed
   };
 
   return (
@@ -418,11 +418,11 @@ export default function SearchPage() {
                     Back to Search
                   </Button>
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-600">Step {tripStep} of 8</span>
+                    <span className="text-sm text-gray-600">Step {tripStep} of 7</span>
                       <div className="w-32 bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${(tripStep / 8) * 100}%` }}
+                          style={{ width: `${(tripStep / 7) * 100}%` }}
                         ></div>
                       </div>
                   </div>
@@ -431,21 +431,19 @@ export default function SearchPage() {
                   {tripStep === 1 && "When are you going?"}
                   {tripStep === 2 && "What kind of trip are you planning?"}
                   {tripStep === 3 && "What are your food preferences?"}
-                  {tripStep === 4 && "What are your interests?"}
-                  {tripStep === 5 && "Choose your eco-friendly options"}
-                  {tripStep === 6 && "Emergency Contact Information"}
-                  {tripStep === 7 && "Language Preferences"}
-                  {tripStep === 8 && "Trip Summary"}
+                  {tripStep === 4 && "Choose your eco-friendly options"}
+                  {tripStep === 5 && "Emergency Contact Information"}
+                  {tripStep === 6 && "Language Preferences"}
+                  {tripStep === 7 && "Trip Summary"}
                 </CardTitle>
                 <CardDescription className="text-lg text-gray-600">
                   {tripStep === 1 && "Choose a date range, up to 7 days"}
                   {tripStep === 2 && "Select one"}
                   {tripStep === 3 && "This helps us recommend the best restaurants and dining experiences"}
-                  {tripStep === 4 && "Select all that apply"}
-                  {tripStep === 5 && "Help us make your trip more sustainable"}
-                  {tripStep === 6 && "For your safety during the trip"}
-                  {tripStep === 7 && "Select languages you're comfortable with"}
-                  {tripStep === 8 && "Review your trip details"}
+                  {tripStep === 4 && "Help us make your trip more sustainable"}
+                  {tripStep === 5 && "For your safety during the trip"}
+                  {tripStep === 6 && "Select languages you're comfortable with"}
+                  {tripStep === 7 && "Review your trip details"}
                 </CardDescription>
               </CardHeader>
               
@@ -617,43 +615,8 @@ export default function SearchPage() {
                   </div>
                 )}
 
-                {/* Step 4: Interests */}
+                {/* Step 4: Eco-friendly Options */}
                 {tripStep === 4 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {interestOptions.map((option) => {
-                      const isSelected = selectedInterests.includes(option.id);
-                      
-                      return (
-                        <div
-                          key={option.id}
-                          onClick={() => {
-                            if (isSelected) {
-                              setSelectedInterests(prev => prev.filter(id => id !== option.id));
-                            } else {
-                              setSelectedInterests(prev => [...prev, option.id]);
-                            }
-                          }}
-                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${
-                            isSelected 
-                              ? 'border-blue-500 bg-blue-50' 
-                              : 'border-gray-200 bg-white hover:shadow-sm'
-                          }`}
-                        >
-                          <div className="text-center">
-                            <div className="text-2xl mb-2">{option.icon}</div>
-                            <h4 className={`font-medium text-sm ${isSelected ? 'text-blue-800' : 'text-gray-800'}`}>
-                              {option.label}
-                            </h4>
-                            {isSelected && <Check className="w-4 h-4 text-blue-600 mx-auto mt-2" />}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Step 5: Eco Mode */}
-                {tripStep === 5 && (
                   <div className="space-y-8">
                     <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
                       <div className="flex items-center justify-between">
@@ -716,8 +679,8 @@ export default function SearchPage() {
                   </div>
                 )}
 
-                {/* Step 6: Emergency Contact */}
-                {tripStep === 6 && (
+                {/* Step 5: Emergency Contact */}
+                {tripStep === 5 && (
                   <div className="space-y-6">
                     <div className="bg-red-50 border border-red-200 rounded-lg p-6">
                       <div className="flex items-center mb-4">
@@ -772,8 +735,8 @@ export default function SearchPage() {
                   </div>
                 )}
 
-                {/* Step 7: Language Preferences */}
-                {tripStep === 7 && (
+                {/* Step 6: Language Preferences */}
+                {tripStep === 6 && (
                   <div className="space-y-6">
                     <div className="bg-green-50 border border-green-200 rounded-lg p-6">
                       <div className="flex items-center mb-4">
@@ -827,8 +790,8 @@ export default function SearchPage() {
                   </div>
                 )}
 
-                {/* Step 8: Trip Summary */}
-                {tripStep === 8 && (
+                {/* Step 7: Trip Summary */}
+                {tripStep === 7 && (
                   <div className="space-y-6">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                       <div className="flex items-center mb-4">
@@ -882,16 +845,15 @@ export default function SearchPage() {
                       (tripStep === 1 && (!selectedDates.from || !selectedDates.to || getDuration() > 7)) ||
                       (tripStep === 2 && (!selectedCompany || withPets === null)) ||
                       (tripStep === 3 && !selectedFoodPreference) ||
-                      (tripStep === 4 && selectedInterests.length === 0) ||
-                      (tripStep === 6 && (!emergencyName.trim() || !emergencyPhone.trim() || !emergencyRelation.trim())) ||
-                      (tripStep === 7 && selectedLanguages.length === 0) ||
+                      (tripStep === 5 && (!emergencyName.trim() || !emergencyPhone.trim() || !emergencyRelation.trim())) ||
+                      (tripStep === 6 && selectedLanguages.length === 0) ||
                       submitting
                     }
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    {tripStep === 8 ? (submitting ? 'Building your itinerary...' : 'Create Trip Plan') : 'Next'}
-                    {tripStep < 8 && <ChevronRight className="w-4 h-4 ml-2" />}
+                    {tripStep === 7 ? (submitting ? 'Building your itinerary...' : 'Create Trip Plan') : 'Next'}
+                    {tripStep < 7 && <ChevronRight className="w-4 h-4 ml-2" />}
                   </Button>
                 </div>
               </CardContent>

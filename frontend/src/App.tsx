@@ -25,7 +25,6 @@ import PermissionRequests from "@/components/PermissionRequests";
 import DateSelection from "@/pages/trip-planning/DateSelection";
 import CompanySelection from "@/pages/trip-planning/CompanySelection";
 import FoodPreferences from "@/pages/trip-planning/FoodPreferences";
-import InterestsSelection from "@/pages/trip-planning/InterestsSelection";
 import EcoModeSelection from "@/pages/trip-planning/EcoModeSelection";
 import EmergencyContact from "@/pages/trip-planning/EmergencyContact";
 import LanguagePreference from "@/pages/trip-planning/LanguagePreference";
@@ -73,7 +72,6 @@ function Router() {
         <Route path="/trip-planning/dates" element={<DateSelection />} />
         <Route path="/trip-planning/company" element={<CompanySelection />} />
         <Route path="/trip-planning/food-preferences" element={<FoodPreferences />} />
-        <Route path="/trip-planning/interests" element={<InterestsSelection />} />
         <Route path="/trip-planning/eco-mode" element={<EcoModeSelection />} />
         <Route path="/trip-planning/emergency-contact" element={<EmergencyContact />} />
         <Route path="/trip-planning/language-preference" element={<LanguagePreference />} />
