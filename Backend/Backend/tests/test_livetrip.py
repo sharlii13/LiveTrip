@@ -173,6 +173,39 @@ def test_open_data_fallback_when_google_is_out_of_quota(app, monkeypatch):
     geo._search_cache.clear()
 
 
+def test_google_network_failure_falls_back_instead_of_crashing(app, monkeypatch):
+    import asyncio
+    import aiohttp
+    from livetrip import geo, osm
+    from app.rootplan.services import google_places
+
+    async def broken(self, query, location):
+        raise aiohttp.ClientConnectionError("connection reset")
+
+    async def open_data(query, near):
+        return [{"name": "Fort Aguada", "source": "openstreetmap"}]
+
+    monkeypatch.setenv("GOOGLE_PLACES_API_KEY", "test-key")
+    monkeypatch.setattr(google_places.GooglePlacesService, "text_search", broken)
+    monkeypatch.setattr(osm, "search", open_data)
+    monkeypatch.setattr(geo, "_google_down_until", 0.0)
+    result = asyncio.run(geo._text_search_any("attractions in goa", None))
+    assert result[0]["name"] == "Fort Aguada"
+
+
+def test_unexpected_errors_return_a_readable_message(app, monkeypatch):
+    from fastapi.testclient import TestClient
+    from livetrip import planning
+
+    async def boom(*args, **kwargs):
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(planning, "generate", boom)
+    r = TestClient(app, raise_server_exceptions=False).post("/api/trips", json={"destination": "Goa"})
+    assert r.status_code == 500
+    assert "RuntimeError: database is locked" in r.json()["detail"]
+
+
 def test_wikipedia_sights_keep_only_places_to_visit(monkeypatch):
     import asyncio
     from livetrip import osm

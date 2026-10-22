@@ -5,6 +5,7 @@ import time
 from datetime import date
 from typing import Dict, List, Optional, Tuple
 
+import aiohttp
 import httpx
 from fastapi import HTTPException
 
@@ -109,6 +110,9 @@ async def _google_text_search(query: str, near: Optional[Tuple[float, float]]) -
         if "quota" in str(e).lower():
             raise HTTPException(status_code=429, detail=QUOTA_MESSAGE)
         raise HTTPException(status_code=503, detail=str(e))
+    except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as e:
+        # network trouble reaching Google counts as "unavailable", so the open-data fallback takes over
+        raise HTTPException(status_code=503, detail=f"Google Places unreachable ({e.__class__.__name__})")
     out = []
     for p in places:
         category = categorize(p.types)

@@ -10,26 +10,40 @@ export class ApiError extends Error {
 
 export async function api<T = any>(path: string, options: RequestInit & { json?: unknown } = {}): Promise<T> {
   const { json, headers, ...rest } = options;
-  const res = await fetch(path, {
-    credentials: "include",
-    ...rest,
-    headers: json !== undefined ? { "Content-Type": "application/json", ...headers } : headers,
-    body: json !== undefined ? JSON.stringify(json) : rest.body,
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      credentials: "include",
+      ...rest,
+      headers: json !== undefined ? { "Content-Type": "application/json", ...headers } : headers,
+      body: json !== undefined ? JSON.stringify(json) : rest.body,
+    });
+  } catch {
+    throw new ApiError(0, BACKEND_DOWN);
+  }
   const text = await res.text();
   const data = text ? safeJson(text) : null;
   if (!res.ok) {
+    const structured = data && typeof data === "object" && !("raw" in data);
+    if (!structured && res.status >= 500) {
+      // a bare 500/502/504 with no JSON body comes from the dev-server proxy when the backend is unreachable
+      throw new ApiError(res.status, BACKEND_DOWN);
+    }
     const detail = data?.detail ?? data?.message ?? data?.error ?? res.statusText;
     throw new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
   }
   return data as T;
 }
 
+const BACKEND_DOWN =
+  "The LiveTrip server isn't responding. Check that the backend window is still running " +
+  "(python -m uvicorn main:app --port 8000), wait a few seconds, and try again.";
+
 function safeJson(text: string) {
   try {
     return JSON.parse(text);
   } catch {
-    return { detail: text };
+    return { detail: text, raw: true };
   }
 }
 

@@ -160,7 +160,7 @@ class GooglePlacesService:
             "X-Goog-Api-Key": self.api_key,
             "X-Goog-FieldMask": PLACES_FIELD_MASK,
         }
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:  # never hang a request
             async with session.post(f"{PLACES_NEW_BASE_URL}/{endpoint}", json=body, headers=headers) as response:
                 data = await response.json(content_type=None)
                 if response.status != 200:

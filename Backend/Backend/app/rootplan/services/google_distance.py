@@ -180,7 +180,7 @@ class GoogleDistanceService:
         }
 
         # A fresh session per call: a shared one breaks when the caller's event loop changes
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:  # never hang a request
             async with session.post(ROUTES_MATRIX_URL, json=body, headers=headers) as response:
                 data = await response.json(content_type=None)
             if response.status != 200:
