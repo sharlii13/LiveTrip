@@ -192,6 +192,30 @@ def _numbers_to_digits(text: str) -> str:
     return re.sub(r"\b(" + words + r")\b", lambda m: str(NUMBER_WORDS[m.group(1)]), text)
 
 
+TOP_PLACES = re.compile(
+    r"(?:(?:top|best|famous|popular|must[- ]see)\s+)?(\d+)?\s*(?:tourist\s+)?"
+    r"(?:attractions?|places(?: to (?:visit|see|go))?|sights|things to do|spots|destinations)\s+"
+    r"(?:in|of|at|around|near)\s+([a-z][a-z .'-]{1,60})")
+
+
+async def _top_places(match: "re.Match") -> Dict:
+    """ "top 5 attractions of kerala": the best-rated sights of a city or region, no trip needed."""
+    where = match.group(2).strip(" .?!'").removeprefix("the ")
+    n = max(1, min(int(match.group(1) or 5), 10))
+    try:
+        found = await search_places(f"top tourist attractions in {where}", limit=20)
+    except HTTPException:
+        return {"intent": "top_places", "reply": "I can't search places right now. Please try again in a minute."}
+    found = [p for p in found if p["category"] not in ("lodging", "food")]
+    found.sort(key=lambda p: place_score(p["rating"], p["rating_count"]), reverse=True)
+    if not found:
+        return {"intent": "top_places", "reply": f"I couldn't find attractions for \"{where}\"."}
+    lines = [f"- {p['name']}" + (f" ({p['rating']}★, {p['rating_count']:,} reviews)" if p.get("rating") else "")
+             for p in found[:n]]
+    return {"intent": "top_places", "places": found[:n],
+            "reply": f"Top {min(n, len(found))} attractions in {where.title()}:\n" + "\n".join(lines)}
+
+
 def _names(places: List[Dict], n: int = 5) -> str:
     return "\n".join(f"- {p['name']} ({str(p['rating']) + '★, ' if p.get('rating') else ''}{p['distance_km']} km)"
                      for p in places[:n])  # open-data places have no rating: say nothing rather than "0★"
@@ -221,6 +245,9 @@ async def _rules(message: str, body: "AssistantIn", trip: Optional[Trip], items:
     def need_location():
         return {"reply": "Share your location or open a trip so I know where you are.", "intent": "location"}
 
+    top = TOP_PLACES.search(text)
+    if top:
+        return await _top_places(top)
     km_match = re.search(r"(\d+(?:\.\d+)?)\s*km", text)
     hours_match = re.search(r"(\d+(?:\.\d+)?)\s*(hour|hr)", text)
     delay_match = (re.search(r"(?:late|delay\w*|stuck)\D*(\d+)\s*(?:min|minute)", text)  # "delayed by 30 min"
@@ -467,12 +494,13 @@ async def assistant(body: AssistantIn, user: Optional[User] = Depends(optional_u
     trip = get_trip(db, body.trip_id, user) if body.trip_id else None
     items = load_items(db, trip) if trip else []
     history = [t.model_dump() for t in body.history[-12:]]
+    ai_failed = False
     if ai_assistant.available():
         try:
             return await ai_assistant.reply(body.message, history, _trip_context(trip, items, body),
                                             _ai_tools(body, trip, items, user, db))
         except ai_assistant.Unavailable:
-            pass
+            ai_failed = True
     result = await _rules(body.message, body, trip, items, user, db)
     if result.get("intent") != "help":
         return result
@@ -485,4 +513,8 @@ async def assistant(body: AssistantIn, user: Optional[User] = Depends(optional_u
         again = await _rules(f"{previous} {body.message}", body, trip, items, user, db)
         if again.get("intent") != "help":
             return again
+    if ai_failed:  # be honest: the question was fine, the AI just didn't answer
+        result["reply"] = ("My AI brain is busy right now (the Gemini service didn't answer), so I can only do "
+                           "quick tasks for a moment. Try again shortly, or ask me something like:\n"
+                           + result["reply"].split("\n", 1)[1])
     return result

@@ -840,3 +840,17 @@ def test_gemini_moves_on_from_a_busy_model(make_user, monkeypatch):
     res = a.post("/api/assistant/message", json={"message": "hi"}).json()
     assert res["reply"] == "Hello from the backup." and tried == ["gemini-3.5-flash", "gemini-3.6-flash"]
     assert ai_assistant._gemini_last_good == "gemini-3.6-flash"  # next time it starts with the one that worked
+
+
+def test_rule_assistant_answers_top_places_anywhere_and_admits_ai_trouble(make_user, monkeypatch):
+    from livetrip import ai_assistant
+    a = make_user()
+    top = a.post("/api/assistant/message", json={"message": "what are the top 5 attraction of kerela"}).json()
+    assert top["intent"] == "top_places" and top["reply"].startswith("Top ") and 0 < len(top["places"]) <= 5
+
+    async def down(*args, **kw):
+        raise ai_assistant.Unavailable("busy")
+    monkeypatch.setenv("GEMINI_API_KEY", "test")
+    monkeypatch.setattr(ai_assistant, "reply", down)
+    busy = a.post("/api/assistant/message", json={"message": "hello there"}).json()
+    assert busy["intent"] == "help" and busy["reply"].startswith("My AI brain is busy")
