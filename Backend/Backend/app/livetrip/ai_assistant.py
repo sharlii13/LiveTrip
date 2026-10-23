@@ -12,6 +12,7 @@ import asyncio
 import json
 import logging
 import os
+import time
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import httpx
@@ -20,8 +21,12 @@ logger = logging.getLogger(__name__)
 
 MODEL = "claude-opus-5-5"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-GEMINI_MODELS = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]
+# fastest first: the lite models answer in ~2 s and have the most free quota; the full models are the backup
+GEMINI_MODELS = ["gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-3.5-flash", "gemini-3.6-flash",
+                 "gemini-flash-latest"]
+GEMINI_COOLDOWN_S = 120  # a busy or out-of-quota model is skipped this long instead of costing every message a try
 _gemini_last_good: Optional[str] = None
+_gemini_resting: Dict[str, float] = {}
 MAX_TOOL_ROUNDS = 6
 
 SYSTEM = """You are LiveTrip's travel buddy: a friendly, practical assistant inside a trip-planning app. Travellers \
@@ -46,6 +51,9 @@ traveller to confirm; say briefly what you proposed and that they can review it.
 NEAR = {"type": "string", "enum": ["next_stop", "my_location", "trip_centre"],
         "description": "Search around the next planned stop (default), the traveller's shared location, "
                        "or the middle of the trip's stops."}
+NEAR_PLACE = {"type": "string", "description": "A named place or area to search around instead, e.g. "
+                                              "'Hawa Mahal, Jaipur' or 'Fort Kochi'. Use it whenever the traveller "
+                                              "names a place."}
 TOOLS = [
     {"name": "find_places",
      "description": "Search real places (sights, cafes, parks, shops...) around a point. Returns name, rating, "
@@ -53,6 +61,7 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "query": {"type": "string", "description": "What to look for, e.g. 'quiet cafe', 'museum', 'viewpoint'."},
          "near": NEAR,
+         "near_place": NEAR_PLACE,
          "radius_km": {"type": "number", "description": "Search radius in km (default 3, max 30)."}},
          "required": ["query"], "additionalProperties": False}},
     {"name": "find_restaurants",
@@ -60,6 +69,7 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "diet": {"type": "string", "enum": ["any", "vegetarian", "vegan"]},
          "near": NEAR,
+         "near_place": NEAR_PLACE,
          "radius_km": {"type": "number", "description": "Default 3, max 20."}},
          "required": ["diet"], "additionalProperties": False}},
     {"name": "find_stays",
@@ -188,7 +198,10 @@ GEMINI_TOOLS = [{"functionDeclarations": [
 
 def _gemini_models() -> List[str]:
     preferred = [m for m in (os.getenv("GEMINI_MODEL"), _gemini_last_good) if m]
-    return list(dict.fromkeys(preferred + GEMINI_MODELS))
+    models = list(dict.fromkeys(preferred + GEMINI_MODELS))
+    now = time.monotonic()
+    ready = [m for m in models if _gemini_resting.get(m, 0) <= now]
+    return ready or models  # all resting: try anyway rather than not at all
 
 
 class _Busy(Exception):
@@ -204,6 +217,7 @@ async def _gemini_reply(message: str, history: List[Dict[str, str]], context: st
         try:
             out = await _gemini_turn(model, message, history, context, handlers)
         except _Busy as e:
+            _gemini_resting[model] = time.monotonic() + GEMINI_COOLDOWN_S
             logger.warning(f"Gemini {model} unavailable, trying the next model: {e}")
             continue
         _gemini_last_good = model
@@ -216,7 +230,7 @@ async def _gemini_turn(model: str, message: str, history: List[Dict[str, str]], 
     contents = [{"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]}
                 for m in build_messages(history, message, context)]
     out: Dict[str, Any] = {"intent": "ai"}
-    async with httpx.AsyncClient(timeout=25) as client:
+    async with httpx.AsyncClient(timeout=12) as client:  # a slow model is a busy model: move on
         for _ in range(MAX_TOOL_ROUNDS):
             try:
                 r = await client.post(GEMINI_URL.format(model=model),

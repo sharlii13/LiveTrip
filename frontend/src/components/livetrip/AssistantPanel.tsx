@@ -40,7 +40,7 @@ export default function AssistantPanel({ tripId, onTripChanged, className = "h-[
 
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, busy]);
 
   const send = async (text: string) => {
     if (!text.trim()) return;
@@ -86,6 +86,16 @@ export default function AssistantPanel({ tripId, onTripChanged, className = "h-[
             </div>
           </div>
         ))}
+        {busy && (
+          <div className="flex justify-start" role="status" aria-label="Assistant is typing">
+            <div className="rounded-lg px-3 py-2 bg-muted flex items-center gap-1">
+              <Bot className="w-4 h-4 mr-1" />
+              {[0, 150, 300].map((d) => (
+                <span key={d} className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: `${d}ms` }} />
+              ))}
+            </div>
+          </div>
+        )}
         <div ref={end} />
       </div>
       <div className="flex flex-wrap gap-1 my-2">

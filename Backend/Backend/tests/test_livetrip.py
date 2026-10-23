@@ -739,11 +739,12 @@ def test_gemini_assistant_tool_loop(make_user, monkeypatch):
 
     monkeypatch.setenv("GEMINI_API_KEY", "test")
     monkeypatch.setattr(ai_assistant, "_gemini_last_good", None)  # start from the first model in the list
+    monkeypatch.setattr(ai_assistant, "_gemini_resting", {})
     monkeypatch.setattr(ai_assistant.httpx, "AsyncClient", FakeClient)
     res = a.post("/api/assistant/message", json={"message": "veg food near my next stop?", "trip_id": tid}).json()
     assert res["reply"] == "Try the first one, it's close." and res["places"]
     url, second = sent[1]
-    assert "gemini-3.5-flash:generateContent" in url
+    assert "gemini-3.5-flash-lite:generateContent" in url
     assert second["contents"][-2]["parts"][0]["thoughtSignature"] == "sig"
     assert "functionResponse" in second["contents"][-1]["parts"][0]
     assert "additionalProperties" not in str(second["tools"])
@@ -835,11 +836,17 @@ def test_gemini_moves_on_from_a_busy_model(make_user, monkeypatch):
 
     monkeypatch.setenv("GEMINI_API_KEY", "test")
     monkeypatch.setattr(ai_assistant, "_gemini_last_good", None)
+    monkeypatch.setattr(ai_assistant, "_gemini_resting", {})
     monkeypatch.setattr(ai_assistant.httpx, "AsyncClient", Chain)
     a = make_user()
     res = a.post("/api/assistant/message", json={"message": "hi"}).json()
-    assert res["reply"] == "Hello from the backup." and tried == ["gemini-3.5-flash", "gemini-3.6-flash"]
-    assert ai_assistant._gemini_last_good == "gemini-3.6-flash"  # next time it starts with the one that worked
+    assert res["reply"] == "Hello from the backup." and tried == ["gemini-3.5-flash-lite", "gemini-flash-lite-latest"]
+    assert ai_assistant._gemini_last_good == "gemini-flash-lite-latest"  # next time it starts with the one that worked
+    # the busy model rests for a while: the next message doesn't waste time on it
+    monkeypatch.setattr(ai_assistant, "_gemini_last_good", None)
+    tried.clear()
+    a.post("/api/assistant/message", json={"message": "hi again"})
+    assert tried[0] == "gemini-flash-lite-latest"
 
 
 def test_rule_assistant_answers_top_places_anywhere_and_admits_ai_trouble(make_user, monkeypatch):

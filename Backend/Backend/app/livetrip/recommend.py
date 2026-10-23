@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from database import User, get_db
 from . import ai_assistant
 from .core import loads, optional_user
-from .geo import VISIT_MINUTES, road_km, search_places, travel_minutes
+from .geo import VISIT_MINUTES, geocode, road_km, search_places, travel_minutes
 from .models import Trip
 from .planning import (build_ops, get_trip, itinerary_out, load_items, next_item, place_score, preferred_categories,
                        apply_ops)
@@ -411,16 +411,23 @@ def _ai_tools(body: AssistantIn, trip: Optional[Trip], items: List[Dict], user: 
         last_found[:] = places
         return {"places": _compact(places)}
 
-    async def find_places(query: str, near: str = "next_stop", radius_km: float = 3):
-        where = point(near)
+    async def around(near: str, near_place: Optional[str]) -> Optional[Tuple[float, float]]:
+        if near_place:  # "near the Hawa Mahal in Jaipur": no trip or shared location needed
+            return await geocode(f"{near_place}, {trip.destination}" if trip and "," not in near_place else near_place)
+        return point(near)
+
+    async def find_places(query: str, near: str = "next_stop", radius_km: float = 3,
+                          near_place: Optional[str] = None):
+        where = await around(near, near_place)
         if not where:
             return no_point()
         found = await search_places(query[:100], near=where, limit=20)
         ranked = _rank([p for p in found if p["category"] != "lodging" and p["name"] not in taken], where, boosts)
         return remember([p for p in ranked if p["distance_km"] <= min(max(radius_km, 0.5), 30)])
 
-    async def find_restaurants(diet: str = "any", near: str = "next_stop", radius_km: float = 3):
-        where = point(near)
+    async def find_restaurants(diet: str = "any", near: str = "next_stop", radius_km: float = 3,
+                               near_place: Optional[str] = None):
+        where = await around(near, near_place)
         if not where:
             return no_point()
         return remember(await restaurants(*where, diet=diet, radius_km=min(max(radius_km, 0.5), 20), boosts=boosts))
