@@ -340,6 +340,18 @@ def test_wikipedia_sights_keep_only_places_to_visit(monkeypatch):
     assert osm.intents_for("Charminar, Hyderabad") == []
     osm._wiki_cache.clear()
 
+    async def fake_nominatim(url, params):  # vegetarian by OSM tag, by name, and a non-veg place
+        return [{"name": n, "lat": "17.38", "lon": "78.48", "type": "restaurant", "category": "amenity",
+                 "importance": 0.1, "osm_type": "node", "osm_id": i, "extratags": tags}
+                for i, (n, tags) in enumerate([("Chutneys", {"diet:vegetarian": "only"}), ("Anand Bhavan", {}),
+                                               ("Madina Hotel", {})])]
+
+    monkeypatch.setattr(osm, "_get", fake_nominatim)
+    monkeypatch.setattr(osm, "wikipedia_sights", lambda *a: asyncio.sleep(0, []))
+    monkeypatch.setattr(osm, "_last_nominatim", 0.0)
+    veg = asyncio.run(osm.search("pure vegetarian restaurant", (17.38, 78.48)))
+    assert {p["name"] for p in veg} == {"Chutneys", "Anand Bhavan"}  # never "any restaurant" for a veg search
+
 
 def test_trips_planned_before_sign_in_are_claimed(client, make_user):
     anonymous = make_trip(client, days=1)  # no account yet
@@ -697,3 +709,134 @@ def test_history_feedback_and_preferences(make_user, client):
     names = [s["activity"]["name"] for s in visits(updated)]
     assert slot["activity"]["name"] in names  # completed stops survive a regeneration
     assert next(s for s in visits(updated) if s["activity"]["name"] == slot["activity"]["name"])["status"] == "completed"
+
+
+def test_gemini_assistant_tool_loop(make_user, monkeypatch):
+    """Gemini is faked: it calls a tool (its turn must go back unchanged, signature included), then answers."""
+    import copy
+    from livetrip import ai_assistant
+    a = make_user()
+    tid = int(make_trip(a, days=1)["id"])
+    sent = []
+    replies = [
+        {"candidates": [{"content": {"role": "model", "parts": [
+            {"functionCall": {"name": "find_restaurants", "args": {"diet": "vegetarian"}}, "thoughtSignature": "sig"}]}}]},
+        {"candidates": [{"content": {"role": "model", "parts": [{"text": "Try the first one, it's close."}]}}]},
+    ]
+
+    class FakeResponse:
+        status_code = 200
+        def __init__(self, body): self.body = body
+        def json(self): return self.body
+
+    class FakeClient:
+        def __init__(self, **kw): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, url, headers, json):
+            sent.append((url, copy.deepcopy(json)))
+            return FakeResponse(replies[len(sent) - 1])
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test")
+    monkeypatch.setattr(ai_assistant, "_gemini_last_good", None)  # start from the first model in the list
+    monkeypatch.setattr(ai_assistant.httpx, "AsyncClient", FakeClient)
+    res = a.post("/api/assistant/message", json={"message": "veg food near my next stop?", "trip_id": tid}).json()
+    assert res["reply"] == "Try the first one, it's close." and res["places"]
+    url, second = sent[1]
+    assert "gemini-3.5-flash:generateContent" in url
+    assert second["contents"][-2]["parts"][0]["thoughtSignature"] == "sig"
+    assert "functionResponse" in second["contents"][-1]["parts"][0]
+    assert "additionalProperties" not in str(second["tools"])
+
+
+def test_gemini_quota_falls_back_to_rules_and_trip_totals(make_user, monkeypatch):
+    from livetrip import ai_assistant
+
+    class Busy:
+        def __init__(self, **kw): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, *a, **kw):
+            class R:
+                status_code, text = 429, "quota"
+            return R()
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test")
+    monkeypatch.setattr(ai_assistant.httpx, "AsyncClient", Busy)
+    a = make_user()
+    tid = int(make_trip(a, days=2)["id"])
+    res = a.post("/api/assistant/message", json={"message": "what is my total travel time", "trip_id": tid}).json()
+    assert res["intent"] == "trip_stats" and "Day 2" in res["reply"] and "travel in total" in res["reply"]
+
+
+def test_google_sign_in(app, monkeypatch):
+    from fastapi.testclient import TestClient
+    from livetrip import accounts
+    c = TestClient(app)
+    assert c.get("/api/auth/providers").json() == {"google": False}
+    assert "google_not_configured" in c.get("/api/auth/google", follow_redirects=False).headers["location"]
+
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "cid")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "secret")
+    profile = {"email": "Traveller@Example.com", "email_verified": True, "name": "Tia", "picture": "https://p/x.png"}
+
+    class FakeGoogle:
+        def __init__(self, **kw): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, url, data):
+            assert data["code"] == "the-code" and data["client_secret"] == "secret"
+            return FakeResp({"access_token": "tok"})
+        async def get(self, url, headers):
+            assert headers["Authorization"] == "Bearer tok"
+            return FakeResp(profile)
+
+    class FakeResp:
+        def __init__(self, body): self.body = body
+        def raise_for_status(self): pass
+        def json(self): return self.body
+
+    monkeypatch.setattr(accounts.httpx, "AsyncClient", FakeGoogle)
+    start = c.get("/api/auth/google?next=/groups", follow_redirects=False)
+    assert start.headers["location"].startswith("https://accounts.google.com/") and "client_id=cid" in start.headers["location"]
+    state = start.headers["location"].split("state=")[1].split("&")[0]
+    # a callback with someone else's state is refused
+    bad = c.get("/api/auth/google/callback?code=the-code&state=forged", follow_redirects=False)
+    assert "google_failed" in bad.headers["location"]
+    done = c.get(f"/api/auth/google/callback?code=the-code&state={state}", follow_redirects=False)
+    assert done.headers["location"] == "/groups"
+    me = c.get("/api/auth/me").json()["user"]
+    assert me["email"] == "traveller@example.com" and me["name"] == "Tia"
+    # an unverified Google address never signs in, and next can't point off-site
+    profile["email_verified"] = False
+    c2 = TestClient(app)
+    start = c2.get("/api/auth/google?next=//evil.example", follow_redirects=False)
+    state = start.headers["location"].split("state=")[1].split("&")[0]
+    assert "google_failed" in c2.get(f"/api/auth/google/callback?code=the-code&state={state}",
+                                      follow_redirects=False).headers["location"]
+    assert accounts._safe_next("//evil.example") == "/trips" and accounts._safe_next("https://x") == "/trips"
+
+
+def test_gemini_moves_on_from_a_busy_model(make_user, monkeypatch):
+    from livetrip import ai_assistant
+    tried = []
+
+    class Chain:
+        def __init__(self, **kw): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, url, headers, json):
+            tried.append(url.split("/models/")[1].split(":")[0])
+            class R:
+                status_code = 503 if len(tried) == 1 else 200
+                text = "busy"
+                def json(self): return {"candidates": [{"content": {"parts": [{"text": "Hello from the backup."}]}}]}
+            return R()
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test")
+    monkeypatch.setattr(ai_assistant, "_gemini_last_good", None)
+    monkeypatch.setattr(ai_assistant.httpx, "AsyncClient", Chain)
+    a = make_user()
+    res = a.post("/api/assistant/message", json={"message": "hi"}).json()
+    assert res["reply"] == "Hello from the backup." and tried == ["gemini-3.5-flash", "gemini-3.6-flash"]
+    assert ai_assistant._gemini_last_good == "gemini-3.6-flash"  # next time it starts with the one that worked

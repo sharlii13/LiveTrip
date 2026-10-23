@@ -104,7 +104,9 @@ async def _text_search_any(query: str, near: Optional[Tuple[float, float]]) -> L
         except HTTPException as e:
             if e.status_code not in (429, 503):
                 raise
-            _google_down_until = time.monotonic() + GOOGLE_RETRY_AFTER_S
+            # quota or a missing key lasts: pause Google for a while; a network blip only for a minute
+            lasting = e.status_code == 429 or "KEY" in str(e.detail).upper()
+            _google_down_until = time.monotonic() + (GOOGLE_RETRY_AFTER_S if lasting else 60)
     from . import osm
     return await osm.search(query, near)
 

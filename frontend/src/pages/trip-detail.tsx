@@ -18,7 +18,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { api, currentPosition, describeAwards, Award, Place, Proposal, Slot, Trip } from "@/lib/livetrip";
 import ProposalDialog from "@/components/livetrip/ProposalDialog";
 import PlaceList from "@/components/livetrip/PlaceList";
-import AssistantPanel from "@/components/livetrip/AssistantPanel";
 import PlaceCard from "@/components/livetrip/PlaceCard";
 import TripMap from "@/components/livetrip/TripMap";
 
@@ -391,7 +390,7 @@ export default function TripDetail() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-lg">Live weather</CardTitle></CardHeader>
           <CardContent className="text-sm">
@@ -407,10 +406,6 @@ export default function TripDetail() {
           </CardContent>
         </Card>
 
-        <Card className="lg:row-span-2">
-          <CardHeader className="pb-2"><CardTitle className="text-lg">Travel assistant</CardTitle></CardHeader>
-          <CardContent><AssistantPanel tripId={id} onTripChanged={setTrip} /></CardContent>
-        </Card>
 
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-lg flex items-center gap-2"><Bed className="w-4 h-4" />Where to stay</CardTitle></CardHeader>

@@ -165,6 +165,26 @@ NUMBER_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, 
                 "nine": 9, "ten": 10, "fifteen": 15, "twenty": 20, "thirty": 30, "forty": 40, "forty-five": 45}
 
 
+def trip_stats(items: List[Dict]) -> Dict:
+    """Totals the traveller asks about: travel time, stops, and each day's span."""
+    active = [i for i in items if i["status"] != "skipped"]
+    days: Dict[int, Dict] = {}
+    for i in sorted(active, key=lambda i: (i["day"], i["position"])):
+        d = days.setdefault(i["day"], {"day": i["day"], "travel_min": 0, "stops": 0, "meals": 0,
+                                       "start": i["start"], "end": i["end"]})
+        d["travel_min"] += i.get("travel_min") or 0
+        d["stops" if i["kind"] == "visit" else "meals"] += 1
+        d["end"] = i["end"]
+    return {"travel_min": sum(d["travel_min"] for d in days.values()),
+            "stops": sum(d["stops"] for d in days.values()),
+            "visited": sum(1 for i in active if i["kind"] == "visit" and i["status"] == "completed"),
+            "days": list(days.values())}
+
+
+def _hm(minutes: int) -> str:
+    return f"{minutes // 60} h {minutes % 60} min" if minutes >= 60 else f"{minutes} min"
+
+
 def _numbers_to_digits(text: str) -> str:
     text = re.sub(r"\bhalf\s+(?:an?\s+)?hour", "0.5 hour", text)
     text = re.sub(r"\b(?:an|a)\s+(hour|hr)", r"1 \1", text)
@@ -173,7 +193,8 @@ def _numbers_to_digits(text: str) -> str:
 
 
 def _names(places: List[Dict], n: int = 5) -> str:
-    return "\n".join(f"- {p['name']} ({p['rating']}★, {p['distance_km']} km)" for p in places[:n])
+    return "\n".join(f"- {p['name']} ({str(p['rating']) + '★, ' if p.get('rating') else ''}{p['distance_km']} km)"
+                     for p in places[:n])  # open-data places have no rating: say nothing rather than "0★"
 
 
 async def _rules(message: str, body: "AssistantIn", trip: Optional[Trip], items: List[Dict], user: Optional[User],
@@ -284,6 +305,15 @@ async def _rules(message: str, body: "AssistantIn", trip: Optional[Trip], items:
             found = await mood_places(mood, *where, boosts=boosts, exclude=taken)
             return {"reply": f"For a {mood} mood:\n" + _names(found) if found else "Nothing matched nearby.",
                     "intent": "mood", "places": found}
+    if trip and re.search(r"travel(ling)? time|time .*travel|how long .*(travel|driv|commut|on the road)|"
+                          r"how many (stops|places)|when .*(day )?(end|finish)|total (travel|time|distance|stops)", text):
+        st = trip_stats(items)
+        per_day = "\n".join(f"- Day {d['day']}: {_hm(d['travel_min'])} of travel, {d['stops']} stops, "
+                             f"{d['start']}-{d['end']}" for d in st["days"])
+        return {"intent": "trip_stats", "reply": (
+            f"Your {trip.destination} trip has {_hm(st['travel_min'])} of travel in total between "
+            f"{st['stops']} stops ({st['visited']} visited so far).\n{per_day}\n"
+            "Travel times are estimates between stops, not counting the trip to your first stop.")}
     return {"intent": "help", "reply": (
         "I can help with:\n- \"What should I visit next?\"\n- \"Find a vegetarian restaurant nearby\"\n"
         "- \"Replace my next activity with an indoor attraction\"\n- \"Make the rest of my day more relaxed\"\n"
@@ -306,14 +336,20 @@ def _trip_context(trip: Optional[Trip], items: List[Dict], body: AssistantIn) ->
     nxt = next_item(trip, items)
     if nxt:
         lines.append(f"Next stop: {nxt['name']} (item_id {nxt['id']}, day {nxt['day']} at {nxt['start']}).")
+    st = trip_stats(items)
+    lines.append(f"Totals: {st['travel_min']} min of travel between stops, {st['stops']} stops, "
+                 f"{st['visited']} visited. Per day: " + "; ".join(
+                     f"day {d['day']} {d['start']}-{d['end']}, {d['travel_min']} min travel, {d['stops']} stops"
+                     for d in st["days"]) + ".")
     day = None
     for i in sorted(items, key=lambda i: (i["day"], i["position"])):
         if i["day"] != day:
             day = i["day"]
             lines.append(f"Day {day}:")
         rating = f", {i['rating']} stars" if i.get("rating") else ""
+        travel = f", {i['travel_min']} min travel before it" if i.get("travel_min") else ""
         lines.append(f"- [{i['id']}] {i['start']}-{i['end']} {i['name']} ({i['kind']}, {i['category']}{rating}, "
-                     f"{i['status']}{', confirmed' if i.get('locked') else ''})")
+                     f"{i['status']}{', confirmed' if i.get('locked') else ''}{travel})")
     return "\n".join(lines)
 
 

@@ -1,11 +1,12 @@
-"""The travel assistant's AI brain: Claude with tools that call LiveTrip's own features.
+"""The travel assistant's AI brain: an LLM with tools that call LiveTrip's own features.
 
-Claude answers in conversation (it sees the chat so far, the open trip and the page the traveller is on) and uses
+The model answers in conversation (it sees the chat so far, the open trip and the page the traveller is on) and uses
 tools for anything live - places, ratings, distances, descriptions - so it never makes those up. Plan changes come
-back as proposals the traveller confirms in the app; Claude cannot change a trip by itself.
+back as proposals the traveller confirms in the app; the model cannot change a trip by itself.
 
-Needs ANTHROPIC_API_KEY in app/.env. Without it (or when the API is unreachable) the rule-based assistant in
-recommend.py answers instead.
+Provider, from app/.env: ANTHROPIC_API_KEY (Claude) if set, else GEMINI_API_KEY (Google Gemini; GEMINI_MODEL is
+tried first, then GEMINI_MODELS in order, because single Gemini models are often "busy" or retired). With neither,
+or when the API is unreachable or out of quota, the rule-based assistant in recommend.py answers instead.
 """
 import asyncio
 import json
@@ -13,9 +14,14 @@ import logging
 import os
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
+import httpx
+
 logger = logging.getLogger(__name__)
 
 MODEL = "claude-opus-5-5"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+GEMINI_MODELS = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]
+_gemini_last_good: Optional[str] = None
 MAX_TOOL_ROUNDS = 6
 
 SYSTEM = """You are LiveTrip's travel buddy: a friendly, practical assistant inside a trip-planning app. Travellers \
@@ -99,7 +105,7 @@ class Unavailable(Exception):
 
 
 def available() -> bool:
-    return bool(os.getenv("ANTHROPIC_API_KEY"))
+    return bool(os.getenv("ANTHROPIC_API_KEY") or os.getenv("GEMINI_API_KEY"))
 
 
 _client = None
@@ -124,7 +130,14 @@ def build_messages(history: List[Dict[str, str]], message: str, context: str) ->
 
 async def reply(message: str, history: List[Dict[str, str]], context: str,
                 handlers: Dict[str, Handler]) -> Dict[str, Any]:
-    """One assistant turn. Returns {reply, places?, proposal?}; raises Unavailable if Claude can't be reached."""
+    """One assistant turn. Returns {reply, places?, proposal?}; raises Unavailable if the model can't be reached."""
+    if os.getenv("ANTHROPIC_API_KEY"):
+        return await _claude_reply(message, history, context, handlers)
+    return await _gemini_reply(message, history, context, handlers)
+
+
+async def _claude_reply(message: str, history: List[Dict[str, str]], context: str,
+                        handlers: Dict[str, Handler]) -> Dict[str, Any]:
     import anthropic
 
     messages = build_messages(history, message, context)
@@ -156,6 +169,81 @@ async def reply(message: str, history: List[Dict[str, str]], context: str,
         messages.append({"role": "user", "content": [
             {"type": "tool_result", "tool_use_id": c.id, "content": json.dumps(r, ensure_ascii=False),
              **({"is_error": True} if "error" in r else {})} for c, r in zip(calls, results)]})
+    out["reply"] = "That took me too many steps. Could you ask in a simpler way?"
+    return out
+
+
+def _gemini_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
+    """Gemini takes an OpenAPI-style subset of JSON Schema: no additionalProperties."""
+    out = {k: v for k, v in schema.items() if k != "additionalProperties"}
+    if "properties" in out:
+        out["properties"] = {k: _gemini_schema(v) for k, v in out["properties"].items()}
+    return out
+
+
+GEMINI_TOOLS = [{"functionDeclarations": [
+    {"name": t["name"], "description": t["description"], "parameters": _gemini_schema(t["input_schema"])}
+    for t in TOOLS]}]
+
+
+def _gemini_models() -> List[str]:
+    preferred = [m for m in (os.getenv("GEMINI_MODEL"), _gemini_last_good) if m]
+    return list(dict.fromkeys(preferred + GEMINI_MODELS))
+
+
+class _Busy(Exception):
+    """This Gemini model can't answer right now (busy, out of quota, retired, slow): try the next one."""
+
+
+async def _gemini_reply(message: str, history: List[Dict[str, str]], context: str,
+                        handlers: Dict[str, Handler]) -> Dict[str, Any]:
+    """Each model gets the whole turn; if it gives out part-way (free-tier quotas are per minute), the turn starts
+    again on the next model, because a model's signed tool calls only make sense to that same model."""
+    global _gemini_last_good
+    for model in _gemini_models():
+        try:
+            out = await _gemini_turn(model, message, history, context, handlers)
+        except _Busy as e:
+            logger.warning(f"Gemini {model} unavailable, trying the next model: {e}")
+            continue
+        _gemini_last_good = model
+        return out
+    raise Unavailable("no Gemini model answered")
+
+
+async def _gemini_turn(model: str, message: str, history: List[Dict[str, str]], context: str,
+                       handlers: Dict[str, Handler]) -> Dict[str, Any]:
+    contents = [{"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]}
+                for m in build_messages(history, message, context)]
+    out: Dict[str, Any] = {"intent": "ai"}
+    async with httpx.AsyncClient(timeout=25) as client:
+        for _ in range(MAX_TOOL_ROUNDS):
+            try:
+                r = await client.post(GEMINI_URL.format(model=model),
+                                      headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"]},
+                                      json={"systemInstruction": {"parts": [{"text": SYSTEM}]}, "contents": contents,
+                                            "tools": GEMINI_TOOLS, "generationConfig": {"maxOutputTokens": 4096}})
+            except httpx.HTTPError as e:
+                raise _Busy(repr(e)) from e
+            if r.status_code in (404, 429, 500, 503):  # retired, quota, busy
+                raise _Busy(f"HTTP {r.status_code} {r.text[:200]}")
+            if r.status_code != 200:  # a bad key or request: no other model will do better
+                logger.warning(f"Gemini error {r.status_code}: {r.text[:300]}")
+                raise Unavailable(f"HTTP {r.status_code}")
+            candidate = (r.json().get("candidates") or [{}])[0]
+            parts = (candidate.get("content") or {}).get("parts") or []
+            calls = [p["functionCall"] for p in parts if "functionCall" in p]
+            if not calls:
+                text = "\n".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
+                if candidate.get("finishReason") in ("SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST"):
+                    text = "Sorry, I can't help with that one. Ask me anything about your trip."
+                out["reply"] = text or "Sorry, I didn't catch that. Could you say it another way?"
+                return out
+            contents.append({"role": "model", "parts": parts})  # unchanged: newer models sign their tool calls
+            results = await asyncio.gather(*[_run(handlers, c.get("name", ""), c.get("args") or {}, out)
+                                             for c in calls])
+            contents.append({"role": "user", "parts": [
+                {"functionResponse": {"name": c.get("name", ""), "response": res}} for c, res in zip(calls, results)]})
     out["reply"] = "That took me too many steps. Could you ask in a simpler way?"
     return out
 

@@ -14,7 +14,8 @@ WORK = Path(tempfile.mkdtemp(prefix="livetrip-test-"))
 os.chdir(WORK)  # database.py creates ./hackathon_travel.db in the working directory
 os.environ.update({"LIVETRIP_UPLOAD_DIR": str(WORK / "uploads"), "LIVETRIP_SECRET_KEY": "test-secret",
                    "PYTHONUTF8": "1"})
-for key in ("GOOGLE_PLACES_API_KEY", "GOOGLE_MAPS_API_KEY", "GOOGLE_DISTANCE_MATRIX_API_KEY"):
+for key in ("GOOGLE_PLACES_API_KEY", "GOOGLE_MAPS_API_KEY", "GOOGLE_DISTANCE_MATRIX_API_KEY", "GEMINI_API_KEY",
+            "ANTHROPIC_API_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"):
     os.environ[key] = ""  # set (not removed) so load_dotenv() never pulls a real key from app/.env
 sys.path[:0] = [str(APP_DIR), str(APP_DIR.parent)]
 

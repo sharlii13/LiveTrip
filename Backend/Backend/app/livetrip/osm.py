@@ -124,7 +124,7 @@ async def nominatim(query: str, limit: int = 5, center: Optional[Tuple[float, fl
                     radius_km: float = 4) -> List[Dict]:
     """Free-text search; with a center it searches only inside that area (e.g. 'restaurant' near a stop)."""
     global _last_nominatim
-    params = {"q": query, "format": "jsonv2", "limit": limit, "accept-language": "en"}
+    params = {"q": query, "format": "jsonv2", "limit": limit, "accept-language": "en", "extratags": 1}
     if center:
         dlat = radius_km / 111
         dlng = radius_km / (111 * max(0.2, math.cos(math.radians(center[0]))))
@@ -147,9 +147,14 @@ async def nominatim(query: str, limit: int = 5, center: Optional[Tuple[float, fl
         name = row.get("name") or row.get("display_name", "").split(",")[0]
         if not name:
             continue
-        out.append(_place(name, float(row["lat"]), float(row["lon"]), types,
-                          f"osm:{(row.get('osm_type') or 'x')[0]}{row.get('osm_id')}",
-                          int(float(row.get("importance") or 0) * 1000), row.get("display_name", "")))
+        place = _place(name, float(row["lat"]), float(row["lon"]), types,
+                       f"osm:{(row.get('osm_type') or 'x')[0]}{row.get('osm_id')}",
+                       int(float(row.get("importance") or 0) * 1000), row.get("display_name", ""))
+        tags = row.get("extratags") or {}
+        # OSM's own diet tags beat guessing from the name
+        if tags.get("diet:vegetarian") in ("only", "yes") or tags.get("diet:vegan") in ("only", "yes"):
+            place["vegetarian"] = True
+        out.append(place)
     return out
 
 
@@ -227,6 +232,7 @@ async def search(query: str, near: Optional[Tuple[float, float]] = None) -> List
     if not places and any(isinstance(r, Exception) for r in results):
         raise next(r for r in results if isinstance(r, Exception))
     from .geo import haversine_km
-    places.sort(key=lambda p: ((veg and p["vegetarian"]), p["rating_count"] - haversine_km(near, (p["lat"], p["lng"])) * 20),
-                reverse=True)
+    if veg:  # a vegetarian search lists only places known to be vegetarian (food), never "any restaurant"
+        places = [p for p in places if p["vegetarian"] or p["category"] != "food"]
+    places.sort(key=lambda p: p["rating_count"] - haversine_km(near, (p["lat"], p["lng"])) * 20, reverse=True)
     return places[:25]
