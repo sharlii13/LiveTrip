@@ -68,7 +68,7 @@ export default function TripMap({ slots, selectedId, onSelect, start }: Props) {
           eventHandlers={{ click: () => onSelect(s.item_id) }}
         >
           <Popup>
-            <strong>{s.activity.name}</strong><br />
+            <strong translate="no">{s.activity.name}</strong><br />
             {s.start_time}–{s.end_time}
           </Popup>
         </Marker>

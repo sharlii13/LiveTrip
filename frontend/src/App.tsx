@@ -21,6 +21,7 @@ import { recentTrips } from "@/lib/livetrip";
 import About from "@/pages/about";
 import HealthPanel from "@/components/HealthPanel";
 import Navbar from "@/components/navbar";
+import AssistantBuddy from "@/components/AssistantBuddy";
 import PermissionRequests from "@/components/PermissionRequests";
 import DateSelection from "@/pages/trip-planning/DateSelection";
 import CompanySelection from "@/pages/trip-planning/CompanySelection";
@@ -89,6 +90,7 @@ function Router() {
         <Route path="/history" element={<ProtectedRoute><TravelHistory /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <AssistantBuddy />
     </div>
   );
 }

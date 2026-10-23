@@ -24,7 +24,7 @@ const LiveTripLogo: React.FC<LiveTripLogoProps> = ({
   };
 
   return (
-    <div className={`flex items-center ${className}`}>
+    <div className={`flex items-center ${className}`} translate="no">
       <div className={sizeClasses[size]}>
         <svg viewBox="0 0 100 100" className="w-full h-full">
           <defs>

@@ -45,6 +45,11 @@ export default function TripDetail() {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [trip, setTrip] = useState<Trip | null>(null);
+  useEffect(() => {  // a change confirmed in the buddy's chat
+    const onChanged = (e: Event) => setTrip((e as CustomEvent<Trip>).detail);
+    window.addEventListener("livetrip-trip-changed", onChanged);
+    return () => window.removeEventListener("livetrip-trip-changed", onChanged);
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [weather, setWeather] = useState<Weather | null | undefined>(undefined);  // undefined = still loading
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
@@ -215,14 +220,14 @@ export default function TripDetail() {
       {s.status === "planned" && (
         <>
           {s.kind === "visit" && (
-            <Button size="sm" onClick={() => checkIn(s)} disabled={busy === `checkin-${s.item_id}`}>
+            <Button size="sm" data-buddy="checkin" onClick={() => checkIn(s)} disabled={busy === `checkin-${s.item_id}`}>
               <CheckCircle2 className="w-4 h-4 mr-1" />Check in
             </Button>
           )}
           {!s.locked && (
             <>
-              <Button size="sm" variant="outline" onClick={() => openReplace(s)}><RefreshCw className="w-4 h-4 mr-1" />Replace</Button>
-              <Button size="sm" variant="ghost" title="Skip" aria-label={`Skip ${s.activity.name}`}
+              <Button size="sm" variant="outline" data-buddy="replace" onClick={() => openReplace(s)}><RefreshCw className="w-4 h-4 mr-1" />Replace</Button>
+              <Button size="sm" variant="ghost" title="Skip" aria-label={`Skip ${s.activity.name}`} data-buddy="skip"
                       onClick={() => applyOps([{ op: "skip", item_id: s.item_id }], `Skipped ${s.activity.name}`)}>
                 <SkipForward className="w-4 h-4" />
               </Button>
@@ -262,7 +267,7 @@ export default function TripDetail() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" asChild data-buddy="export">
             <a href={`/api/itinerary/${id}/export?format=txt`}><Download className="w-4 h-4 mr-1" />Export</a>
           </Button>
           {isAuthenticated && trip.user_id && (
@@ -318,8 +323,8 @@ export default function TripDetail() {
                       {` · ${d.total_travel_time} min travel`}
                     </span>
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline" onClick={() => propose("relaxed", "A more relaxed day", { day: d.day })} disabled={!!busy}>Make it relaxed</Button>
-                      <Button size="sm" variant="outline" onClick={() => run("optimize", async () => {
+                      <Button size="sm" variant="outline" onClick={() => propose("relaxed", "A more relaxed day", { day: d.day })} disabled={!!busy} data-buddy="relaxed">Make it relaxed</Button>
+                      <Button data-buddy="optimise" size="sm" variant="outline" onClick={() => run("optimize", async () => {
                         setTrip(await api<Trip>(`/api/itinerary/${id}/route-optimization?day_index=${d.day - 1}`, { method: "POST" }));
                         toast({ title: "Route reordered to cut travel" });
                       })} disabled={!!busy}><RouteIcon className="w-4 h-4 mr-1" />Optimise route</Button>
@@ -329,7 +334,7 @@ export default function TripDetail() {
                     <span>Running late?</span>
                     <Input className="w-20 h-8" type="number" min={5} max={600} value={lateMinutes} onChange={(e) => setLateMinutes(e.target.value)} />
                     <span>min</span>
-                    <Button size="sm" variant="outline" disabled={!!busy}
+                    <Button size="sm" variant="outline" disabled={!!busy} data-buddy="late"
                             onClick={() => propose("delay", "Shift the rest of the day", { day: d.day, minutes: Number(lateMinutes) || 30 })}>
                       Adjust schedule
                     </Button>
@@ -394,7 +399,7 @@ export default function TripDetail() {
               <>
                 <p className="text-2xl font-semibold">{Math.round(weather.temperature)}°C <span className="text-base font-normal capitalize">{weather.condition}</span></p>
                 <p className="text-muted-foreground">Humidity {weather.humidity}% · Wind {weather.wind_speed} km/h</p>
-                <Button size="sm" variant="outline" className="mt-2" onClick={() => propose("weather", "Weather changes")} disabled={!!busy}>
+                <Button size="sm" variant="outline" className="mt-2" onClick={() => propose("weather", "Weather changes")} disabled={!!busy} data-buddy="weather">
                   <CloudRain className="w-4 h-4 mr-1" />Check outdoor plans
                 </Button>
               </>
@@ -419,7 +424,7 @@ export default function TripDetail() {
                   <SelectItem value="high">Luxury</SelectItem>
                 </SelectContent>
               </Select>
-              <Button size="sm" onClick={findStays} disabled={busy === "stays"}>Find stays</Button>
+              <Button size="sm" onClick={findStays} disabled={busy === "stays"} data-buddy="stays">Find stays</Button>
             </div>
             {stays && <PlaceList places={stays} empty="No stays found near your stops." />}
             {stays && <p className="text-xs text-muted-foreground">Sorted by distance to your planned stops. Prices and availability are not live.</p>}

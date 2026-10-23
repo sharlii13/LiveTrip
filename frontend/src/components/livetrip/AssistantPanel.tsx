@@ -3,6 +3,7 @@ import { Send, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, currentPosition, Place, Proposal, Trip } from "@/lib/livetrip";
+import { currentLanguage } from "@/lib/translate";
 import ProposalDialog from "./ProposalDialog";
 import PlaceList from "./PlaceList";
 
@@ -24,9 +25,10 @@ const EXAMPLES = [
 interface Props {
   tripId?: string | number | null;
   onTripChanged?: (trip: Trip) => void;
+  className?: string;
 }
 
-export default function AssistantPanel({ tripId, onTripChanged }: Props) {
+export default function AssistantPanel({ tripId, onTripChanged, className = "h-[28rem]" }: Props) {
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", text: "Hi! Ask me to find places, change your plan, or suggest what to do next." },
   ]);
@@ -42,6 +44,8 @@ export default function AssistantPanel({ tripId, onTripChanged }: Props) {
 
   const send = async (text: string) => {
     if (!text.trim()) return;
+    // the conversation so far gives the assistant context ("and vegetarian?", "tell me more about it")
+    const history = messages.slice(1).slice(-12).map(({ role, text }) => ({ role, text: text.slice(0, 2000) }));
     setMessages((m) => [...m, { role: "user", text }]);
     setInput("");
     setBusy(true);
@@ -49,7 +53,8 @@ export default function AssistantPanel({ tripId, onTripChanged }: Props) {
       const pos = useLocation ? await currentPosition() : null;
       const res = await api<{ reply: string; places?: Place[]; proposal?: Proposal }>("/api/assistant/message", {
         method: "POST",
-        json: { message: text, trip_id: tripId ? Number(tripId) : null, ...(pos ?? {}) },
+        json: { message: text, trip_id: tripId ? Number(tripId) : null, history, page: window.location.pathname,
+                language: currentLanguage(), ...(pos ?? {}) },
       });
       setMessages((m) => [...m, { role: "assistant", text: res.reply, places: res.places, proposal: res.proposal }]);
     } catch (e) {
@@ -65,7 +70,7 @@ export default function AssistantPanel({ tripId, onTripChanged }: Props) {
   };
 
   return (
-    <div className="flex flex-col h-[28rem]">
+    <div className={`flex flex-col ${className}`}>
       <div className="flex-1 overflow-y-auto space-y-3 pr-1">
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>

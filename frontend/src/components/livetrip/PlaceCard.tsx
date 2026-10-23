@@ -74,9 +74,16 @@ function Photos({ info, name, large = false }: { info: PlaceInfo | null | undefi
   );
 }
 
-function firstSentence(text: string): [string, string] {
-  const m = text.match(/^(.+?[.!?])(\s|$)/);
-  return m ? [m[1], text.slice(m[1].length).trim()] : [text, ""];
+/** Splits off the first sentence, not fooled by initials or abbreviations ("officially T. Anjaiah", "St. Mary's"). */
+export function firstSentence(text: string): [string, string] {
+  const end = /[.!?](\s|$)/g;
+  for (let m; (m = end.exec(text)); ) {
+    const word = text.slice(0, m.index).split(/\s/).pop() || "";
+    if (word.length > 1 && !word.includes(".") && !/^(St|Dr|Mr|Mrs|Ms|Jr|Sr|No|Mt|Ft|Rs|Smt)$/.test(word)) {
+      return [text.slice(0, m.index + 1), text.slice(m.index + 1).trim()];
+    }
+  }
+  return [text, ""];
 }
 
 interface Props {
@@ -108,7 +115,7 @@ export default function PlaceCard({ slot, number, city, selected, onSelect, acti
     >
       <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row gap-4">
         <div className="sm:w-48 shrink-0" onClick={(e) => e.stopPropagation()}>
-          {slot.kind === "meal" && info === null
+          {slot.kind === "meal" && info !== undefined && !info?.photos.length
             ? <div className="h-40 sm:h-full rounded-md bg-orange-50 dark:bg-orange-950/30 flex items-center justify-center"><Utensils className="w-8 h-8 text-orange-500" /></div>
             : <Photos info={info} name={a.name} />}
         </div>
@@ -118,7 +125,7 @@ export default function PlaceCard({ slot, number, city, selected, onSelect, acti
               <p className={`font-semibold text-lg leading-tight ${slot.status === "skipped" ? "line-through" : ""}`}>
                 {number !== undefined && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-teal-700 text-white text-xs mr-2 align-middle">{number}</span>}
                 {slot.kind === "meal" && <Utensils className="w-4 h-4 inline mr-1 -mt-1 text-orange-500" />}
-                {a.name}
+                <span translate="no">{a.name}</span>
               </p>
               <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-2 mt-1">
                 {a.rating > 0 && (
@@ -165,7 +172,7 @@ export default function PlaceCard({ slot, number, city, selected, onSelect, acti
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           <DialogHeader>
-            <DialogTitle>{a.name}</DialogTitle>
+            <DialogTitle translate="no">{a.name}</DialogTitle>
             <DialogDescription className="flex flex-wrap gap-2 items-center">
               <span className="capitalize">{a.activity_type}</span>
               {a.rating > 0 && <span className="flex items-center"><Star className="w-3 h-3 mr-0.5 fill-yellow-400 text-yellow-400" />{a.rating} ({a.rating_count.toLocaleString()})</span>}

@@ -111,6 +111,42 @@ def test_opening_hours_parsing_handles_late_and_odd_hours():
     assert _open_close([]) == ("09:00", "18:00")
 
 
+def test_each_day_is_one_compact_area_and_route_is_shortest():
+    from livetrip.planning import area_days, order_route
+    place = lambda name, lat, lng, **kw: {"name": name, "lat": lat, "lng": lng, "hours": [], **kw}
+    lake = [place(f"Lake {i}", 17.41 + i * 0.002, 78.47) for i in range(6)]
+    old_city = [place(f"Old {i}", 17.36 + i * 0.002, 78.47) for i in range(4)]  # ~5.5 km south of the lake
+    ranked = [lake[0], old_city[0]] + lake[1:] + old_city[1:]  # quality order mixes the two areas
+    days = area_days(ranked, 2, 4)
+    assert {p["name"][:3] for p in days[1]} == {"Lak"} and {p["name"][:3] for p in days[2]} == {"Old"}
+    # evening-only places are left out unless they are must-visit
+    night = place("Night market", 17.41, 78.47, hours=["Monday: 6:00 PM – 11:00 PM"])
+    assert night not in area_days([night] + lake, 1, 4)[1]
+    must = dict(night, must_visit=True)
+    assert must in area_days([must] + lake, 1, 4)[1]
+    # near-duplicates (same kind, shared distinctive word) go to different days
+    wax = [place(n, 24.58, 73.68, category="museum") for n in ("Wax Museum Udaipur", "Celebrity Wax Museum Udaipur")]
+    others = [place(f"Sight {i} Udaipur", 24.58, 73.68, category="museum") for i in range(4)]
+    days = area_days(wax + others, 2, 3)
+    assert sum(p["name"].count("Wax") for p in days[1]) == 1
+    # a stop across town is swapped for a spare near the rest, or dropped; must-visit stays
+    from livetrip.planning import trim_outliers
+    day = lake[:4] + [old_city[0]]
+    assert [p["name"] for p in trim_outliers(list(day), [lake[5]])] == ["Lake 0", "Lake 1", "Lake 2", "Lake 3", "Lake 5"]
+    assert "Old 0" not in [p["name"] for p in trim_outliers(list(day), [])]
+    assert "Old 0" in [p["name"] for p in trim_outliers(lake[:4] + [dict(old_city[0], must_visit=True)], [])]
+    # a zig-zag line of stops is visited in order along the line
+    line = [place(str(i), 17.0 + i * 0.01, 78.0) for i in (3, 1, 4, 2)]
+    assert [p["name"] for p in order_route(line, (17.0, 78.0))] == ["1", "2", "3", "4"]
+
+
+def test_times_are_rounded_to_five_minutes(make_user):
+    itin = make_trip(make_user())
+    for d in itin["days"]:
+        for s in d["time_slots"]:
+            assert int(s["start_time"][-2:]) % 5 == 0, s["start_time"]
+
+
 def test_date_picker_timestamps_keep_the_picked_day():
     from livetrip.planning import _parse_date
     fallback = date(2000, 1, 1)
@@ -237,7 +273,14 @@ def test_place_info_matches_the_right_article_and_credits_photos(app, monkeypatc
                     "mime": "image/jpeg", "extmetadata": {"Artist": {"value": "<a>Jane Doe</a>"},
                                                           "LicenseShortName": {"value": "CC BY-SA 4.0"}}}]}
             plan = {"title": "File:Fort plan.svg", "imageinfo": [{"thumburl": "https://thumb/plan.png", "mime": "image/svg+xml"}]}
-            return {"query": {"pages": [page, plan]}}
+            if params.get("generator") == "geosearch":  # geotagged next door, but of something else
+                bust = {"title": "File:LV Prasad bust.jpg", "imageinfo": [{"thumburl": "https://thumb/bust.jpg", "mime": "image/jpeg"}]}
+                return {"query": {"pages": [page, bust]}}
+            namesake = {"title": "File:Fort Aguada replica.jpg", "coordinates": [{"lat": 24.86, "lon": 67.0}],
+                        "imageinfo": [{"thumburl": "https://thumb/replica.jpg", "mime": "image/jpeg"}]}
+            return {"query": {"pages": [page, plan, namesake]}}
+        if params.get("prop") == "images":
+            return {"query": {"pages": [{"images": [{"title": "File:Fort Aguada replica.jpg"}, {"title": "File:Goa map.png"}]}]}}
         return {}
 
     monkeypatch.setattr(placeinfo, "_get", fake_get)
@@ -245,7 +288,7 @@ def test_place_info_matches_the_right_article_and_credits_photos(app, monkeypatc
     info = asyncio.run(placeinfo.place_info("Fort Aguada", 15.4923, 73.7735, "Goa"))
     assert info["article"] == "Fort Aguada" and info["description"].startswith("Fort Aguada is")
     assert info["photos"] == [{"url": "https://thumb/Fort_aguada.jpg", "author": "Jane Doe", "license": "CC BY-SA 4.0",
-                               "source_url": "https://commons.wikimedia.org/wiki/File%3AFort_aguada.jpg"}]
+                               "source_url": "https://commons.wikimedia.org/wiki/File%3AFort_aguada.jpg", "taken_at": None}]
 
     async def down(url, params):
         raise HTTPException(503, "Wikipedia unavailable")
@@ -263,6 +306,8 @@ def test_tour_operators_are_not_places_to_visit(app):
     assert is_service(["tourist_attraction"], "Things to do in Jaipur")
     assert not is_service(["castle", "tourist_attraction"], "Hawa Mahal")
     assert not is_service(["museum"], "Things Museum")
+    assert is_service(["point_of_interest"], "Mumbai Bollywood Tours")
+    assert not is_service(["tourist_attraction"], "Tour Montparnasse")
 
 
 def test_wikipedia_sights_keep_only_places_to_visit(monkeypatch):
@@ -426,6 +471,53 @@ def test_assistant_commands(make_user):
                                                           "expected_version": indoor["proposal"]["version"]})
     assert applied.status_code == 200
     assert ask("hello")["intent"] == "help"
+
+
+def test_rule_assistant_uses_the_chat_and_the_trip(make_user):
+    a = make_user()
+    itin = make_trip(a, days=1)
+    tid = int(itin["id"])
+    stop = visits(itin)[0]["activity"]["name"]
+    about = a.post("/api/assistant/message", json={"message": f"Tell me about {stop}", "trip_id": tid}).json()
+    assert about["intent"] == "about" and stop in about["reply"]
+    follow = a.post("/api/assistant/message", json={
+        "message": "and vegetarian?", "trip_id": tid,
+        "history": [{"role": "user", "text": "Find a restaurant nearby"},
+                    {"role": "assistant", "text": "Places to eat nearby: ..."}]}).json()
+    assert follow["intent"] == "restaurants"
+
+
+def test_ai_assistant_tool_loop_proposal_and_context(make_user, monkeypatch):
+    """Claude is faked: it asks for a plan change, then answers. The app gets the reply plus the proposal."""
+    from types import SimpleNamespace as NS
+    from livetrip import ai_assistant
+    a = make_user()
+    itin = make_trip(a, days=1)
+    tid = int(itin["id"])
+    seen = []
+
+    class FakeMessages:
+        async def create(self, **kw):
+            seen.append({**kw, "messages": list(kw["messages"])})  # the list grows as the loop runs
+            if len(seen) == 1:
+                return NS(stop_reason="tool_use", content=[
+                    NS(type="text", text="Let me lighten your day."),
+                    NS(type="tool_use", id="t1", name="propose_plan_change", input={"change": "relaxed"})])
+            return NS(stop_reason="end_turn", content=[NS(type="text", text="I proposed a lighter day; review it.")])
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    monkeypatch.setattr(ai_assistant, "_client", NS(beta=NS(messages=FakeMessages())))
+    res = a.post("/api/assistant/message", json={
+        "message": "I'm tired, make it easier", "trip_id": tid, "page": f"/trips/{tid}", "language": "hi",
+        "history": [{"role": "assistant", "text": "Hi!"}, {"role": "user", "text": "Hello"},
+                    {"role": "assistant", "text": "Hello! How can I help?"}]}).json()
+    assert res["reply"].startswith("I proposed") and res["proposal"]["ops"]
+    first = seen[0]
+    assert first["model"] == "claude-opus-5-5" and first["messages"][0] == {"role": "user", "content": "Hello"}
+    ctx = first["messages"][-1]["content"]
+    assert "<context>" in ctx and "App language: hi" in ctx and visits(itin)[0]["activity"]["name"] in ctx
+    tool_result = seen[1]["messages"][-1]["content"][0]
+    assert tool_result["type"] == "tool_result" and "preview" not in tool_result["content"]  # big preview stays out
 
 
 # ---------- points, badges, challenges, rewards ----------

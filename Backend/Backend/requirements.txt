@@ -9,6 +9,9 @@ pydantic-settings==2.5.0
 httpx>=0.25.0,<0.28  # FastAPI 0.104 TestClient breaks on httpx 0.28
 requests>=2.31.0
 
+# AI travel assistant (Claude); optional at runtime - without ANTHROPIC_API_KEY the rule-based assistant answers
+anthropic==1.5.0  # shortcut: newest release that accepts anyio<4 (FastAPI 0.104); upgrade with FastAPI
+
 # Database
 sqlalchemy>=2.0.23
 geopy>=2.3.0

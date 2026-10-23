@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Calendar, Users, Utensils, Leaf, MapPin, Phone, Globe } from 'lucide-react';
 import { useTripPlanning } from '@/contexts/TripPlanningContext';
 import LiveTripLogo from '@/components/LiveTripLogo';
+import { languageName } from '@/lib/translate';
 
 const TripSummary: React.FC = () => {
   const navigate = useNavigate();
@@ -178,45 +179,11 @@ const TripSummary: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
-                    {tripData.languages.map((langCode) => {
-                      const languageNames: { [key: string]: string } = {
-                        'en': 'English 🇺🇸',
-                        'es': 'Spanish 🇪🇸',
-                        'fr': 'French 🇫🇷',
-                        'de': 'German 🇩🇪',
-                        'it': 'Italian 🇮🇹',
-                        'pt': 'Portuguese 🇵🇹',
-                        'ru': 'Russian 🇷🇺',
-                        'ja': 'Japanese 🇯🇵',
-                        'ko': 'Korean 🇰🇷',
-                        'zh': 'Chinese 🇨🇳',
-                        'ar': 'Arabic 🇸🇦',
-                        'hi': 'Hindi 🇮🇳',
-                        'th': 'Thai 🇹🇭',
-                        'vi': 'Vietnamese 🇻🇳',
-                        'tr': 'Turkish 🇹🇷',
-                        'pl': 'Polish 🇵🇱',
-                        'nl': 'Dutch 🇳🇱',
-                        'sv': 'Swedish 🇸🇪',
-                        'no': 'Norwegian 🇳🇴',
-                        'da': 'Danish 🇩🇰',
-                        'fi': 'Finnish 🇫🇮',
-                        'el': 'Greek 🇬🇷',
-                        'he': 'Hebrew 🇮🇱',
-                        'cs': 'Czech 🇨🇿',
-                        'hu': 'Hungarian 🇭🇺',
-                        'ro': 'Romanian 🇷🇴',
-                        'bg': 'Bulgarian 🇧🇬',
-                        'hr': 'Croatian 🇭🇷',
-                        'sk': 'Slovak 🇸🇰',
-                        'sl': 'Slovenian 🇸🇮'
-                      };
-                      return (
-                        <Badge key={langCode} variant="secondary" className="bg-green-100 text-green-800">
-                          {languageNames[langCode] || langCode}
-                        </Badge>
-                      );
-                    })}
+                    {tripData.languages.map((langCode) => (
+                      <Badge key={langCode} variant="secondary" className="bg-green-100 text-green-800" translate="no">
+                        {languageName(langCode)}
+                      </Badge>
+                    ))}
                   </div>
                 </CardContent>
               </Card>

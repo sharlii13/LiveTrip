@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { buddySay } from "@/components/AssistantBuddy";
 import { Loader2, MapPin } from "lucide-react";
 
 const STEPS = [
@@ -15,6 +16,7 @@ export default function PlanningOverlay({ open, destination }: { open: boolean; 
 
   useEffect(() => {
     if (!open) return;
+    buddySay("Hang tight, I'm picking the best places for you...");
     setSeconds(0);
     const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(timer);

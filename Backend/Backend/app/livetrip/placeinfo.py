@@ -1,9 +1,10 @@
 """Place descriptions and photos from Wikipedia and Wikimedia Commons (free, no key, freely licensed photos).
 
 Matching: the nearest Wikipedia article whose title matches the place name, else a name + city search.
-Photos: the article's lead image plus Commons photos taken at that spot, each with author and licence for
-attribution. Places with no matching article get no description (nothing is made up) and only photos taken
-within a few metres. Results are cached for a day.
+Photos: the article's lead image and the photos used in the article, plus Commons photos taken at that spot whose
+file name names the place (geotags alone are unreliable: a photo of another landmark can be tagged next door).
+Each has author and licence for attribution. Places with no matching article get no description (nothing is
+made up) and, unless a nearby photo names them, no photo. Results are cached for a day.
 """
 import asyncio
 import re
@@ -14,6 +15,7 @@ from urllib.parse import quote, unquote
 
 from fastapi import APIRouter, HTTPException
 
+from .geo import haversine_km
 from .osm import WIKIPEDIA, _get
 
 COMMONS = "https://commons.wikimedia.org/w/api.php"
@@ -23,7 +25,8 @@ MAX_PHOTOS = 5
 STOPWORDS = {"the", "of", "and", "a", "shri", "shree", "sri", "temple", "fort", "museum", "park", "lake", "beach"}
 NOT_AN_ARTICLE = re.compile(r"constituency|railway station|metro station|bus station|district|ward\b|"
                             r"\(disambiguation\)|list of", re.IGNORECASE)
-NOT_A_PHOTO = re.compile(r"\.(svg|gif|tif|tiff|pdf|webm|ogv)$|map|logo|plan|diagram|flag|signature", re.IGNORECASE)
+NOT_A_PHOTO = re.compile(r"\.(svg|gif|tif|tiff|pdf|webm|ogv)$|map|logo|plan|diagram|flag|signature|"
+                         r"coin|stamp|banknote", re.IGNORECASE)
 
 router = APIRouter(prefix="/api", tags=["places"])
 _cache: Dict[Tuple, Tuple[float, "asyncio.Task"]] = {}
@@ -61,9 +64,13 @@ async def _find_article(name: str, lat: Optional[float], lng: Optional[float], c
         match = _best(name, [p["title"] for p in data.get("query", {}).get("geosearch", [])])
         if match:
             return match
-    data = await _get(WIKIPEDIA, {"action": "query", "format": "json", "formatversion": 2, "list": "search",
-                                  "srsearch": f"{name} {city}".strip(), "srlimit": 5})
-    return _best(name, [r["title"] for r in data.get("query", {}).get("search", [])])
+    data = await _get(WIKIPEDIA, {"action": "query", "format": "json", "formatversion": 2, "generator": "search",
+                                  "gsrsearch": f"{name} {city}".strip(), "gsrlimit": 5, "prop": "coordinates"})
+    pages = data.get("query", {}).get("pages", [])
+    if lat is not None and lng is not None:  # a same-named article elsewhere (or about an idea) is not this place
+        pages = [p for p in pages if p.get("coordinates") and
+                 haversine_km((lat, lng), (p["coordinates"][0]["lat"], p["coordinates"][0]["lon"])) <= 5]
+    return _best(name, [p["title"] for p in pages])
 
 
 def _photo(info: Dict, title: str) -> Optional[Dict]:
@@ -73,11 +80,23 @@ def _photo(info: Dict, title: str) -> Optional[Dict]:
         return None
     return {"url": ii["thumburl"], "author": _clean(meta.get("Artist", {}).get("value", ""))[:80] or "Unknown",
             "license": _clean(meta.get("LicenseShortName", {}).get("value", "")) or "see source",
-            "source_url": f"https://commons.wikimedia.org/wiki/{quote(title.replace(' ', '_'))}"}
+            "source_url": f"https://commons.wikimedia.org/wiki/{quote(title.replace(' ', '_'))}",
+            "taken_at": next(([c["lat"], c["lon"]] for c in info.get("coordinates") or []), None)}
+
+
+def mentions(name: str, file_title: str) -> bool:
+    """Does a photo's file name name the place? ('Domino's' vs 'File:LV Prasad bust.jpg' -> no)"""
+    words = {w for w in _norm(name).split() if len(w) > 2} - STOPWORDS
+    return bool(words & set(_norm(file_title.replace("_", " ")).split()))
+
+
+def _file(photo: Dict) -> str:
+    return unquote(photo["source_url"].rsplit("/", 1)[-1])
 
 
 async def _commons(params: Dict) -> List[Dict]:
-    data = await _get(COMMONS, {"action": "query", "format": "json", "formatversion": 2, "prop": "imageinfo",
+    data = await _get(COMMONS, {"action": "query", "format": "json", "formatversion": 2,
+                                "prop": "imageinfo|coordinates",
                                 "iiprop": "url|extmetadata|mime", "iiurlwidth": 960,
                                 "iiextmetadatafilter": "Artist|LicenseShortName", **params})
     pages = data.get("query", {}).get("pages", [])
@@ -88,12 +107,14 @@ async def _nearby_photos(lat: Optional[float], lng: Optional[float], radius: int
     if lat is None or lng is None:
         return []
     return await _commons({"generator": "geosearch", "ggscoord": f"{lat}|{lng}", "ggsradius": radius,
-                           "ggslimit": 12, "ggsnamespace": 6})
+                           "ggslimit": 20, "ggsnamespace": 6})
 
 
 async def _lookup(name: str, lat: Optional[float], lng: Optional[float], city: str) -> Dict:
     # the article search and the photos taken at the spot run at the same time
-    title, nearby = await asyncio.gather(_find_article(name, lat, lng, city), _nearby_photos(lat, lng, 250))
+    title, nearby = await asyncio.gather(_find_article(name, lat, lng, city), _nearby_photos(lat, lng, 300))
+    subject = (title or "").split(",")[0]  # "Makkah Masjid, Hyderabad" -> "Makkah Masjid": the city is not the subject
+    nearby = [p for p in nearby if mentions(name, _file(p))]
     description, url, photos = None, None, []
     if title:
         summary = await _get(SUMMARY + quote(title.replace(" ", "_"), safe=""), {})
@@ -103,10 +124,19 @@ async def _lookup(name: str, lat: Optional[float], lng: Optional[float], city: s
         if lead:
             file_name = re.sub(r"^\d+px-", "", unquote(lead.split("/")[-1]))
             photos += await _commons({"titles": f"File:{file_name}"})
-    else:
-        nearby = await _nearby_photos(lat, lng, 60)  # without a matching article, only photos taken right there
-    seen = {p["url"] for p in photos}
-    photos += [p for p in nearby if p["url"] not in seen][: MAX_PHOTOS - len(photos)]
+        # photos used in the article that name the place (en.wikipedia serves Commons files' info too)
+        listed = await _get(WIKIPEDIA, {"action": "query", "format": "json", "formatversion": 2, "prop": "images",
+                                        "titles": title, "imlimit": 40})
+        files = [i["title"] for pg in listed.get("query", {}).get("pages", []) for i in pg.get("images", [])
+                 if not NOT_A_PHOTO.search(i["title"]) and (mentions(name, i["title"]) or mentions(subject, i["title"]))]
+        used = await _commons({"titles": "|".join(files[:20])}) if files else []  # Commons knows where each was taken
+        photos += [p for p in used if mentions(name, _file(p)) or mentions(subject, _file(p))]  # not other landmarks
+    if lat is not None and lng is not None:  # e.g. a namesake landmark in another city
+        photos = [p for p in photos if not p["taken_at"] or haversine_km((lat, lng), tuple(p["taken_at"])) <= 2]
+    photos = list({p["source_url"]: p for p in photos + nearby}.values())  # de-duplicated, in order
+    # a lead image can show a neighbour (Makkah Masjid's is of Charminar): photos naming the place come first
+    photos.sort(key=lambda p: not (mentions(name, _file(p)) or mentions(subject, _file(p))))
+    photos = photos[:MAX_PHOTOS]
     return {"name": name, "article": title, "description": description, "url": url, "photos": photos,
             "source": "wikipedia" if title else ("wikimedia commons" if photos else "none")}
 

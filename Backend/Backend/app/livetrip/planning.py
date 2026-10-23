@@ -4,6 +4,7 @@ import json
 import logging
 import math
 import re
+from collections import Counter
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -17,6 +18,7 @@ from . import rewards
 from .core import utc_iso, current_user, loads, optional_user
 from .geo import (OUTDOOR_CATEGORIES, VISIT_MINUTES, haversine_km, hhmm_to_min, min_to_hhmm, road_km, search_places,
                   geocode, travel_minutes, weather)
+from .placeinfo import STOPWORDS
 from .models import Alert, Group, GroupMember, ItemFeedback, ItineraryItem, Trip, WishlistItem
 
 logger = logging.getLogger(__name__)
@@ -48,6 +50,8 @@ PACE = {  # hours per day, max visits per day, last activity end
     "fast": (10.0, 6, "20:30"),
 }
 DAY_START = "09:00"
+TIME_STEP = 5  # minutes; every start time is rounded up to a multiple of this
+CLUSTER_KM = 3.0  # a day's stops stay within this (straight-line) distance of each other's centre when possible
 LATEST_END = "21:30"
 CHECKIN_RADIUS_KM = 0.5
 DISTANCE_BONUS_MIN_KM = 20
@@ -228,6 +232,7 @@ def reflow(items: List[Dict[str, Any]], mode: str, delays: Optional[Dict[int, in
             if it["kind"] == "meal":
                 target = 12 * 60 + 30 if it["name"].lower().startswith("lunch") else 19 * 60 + 30
                 start = max(start, target)
+            start = -(-start // TIME_STEP) * TIME_STEP  # 12:06 -> 12:10: times people can actually plan around
             it["travel_min"] = travel
             it["start"] = min_to_hhmm(start)
             it["end"] = min_to_hhmm(start + it["duration_min"])
@@ -302,8 +307,10 @@ async def restaurant_options(lat: float, lng: float, food_pref: str) -> List[Dic
         return []
     # nearby first, but accept up to 8 km so stops outside town (forts, lakes) still get a meal suggestion
     found = [dict(p, category="food", outdoor=False) for p in found if road_km((lat, lng), (p["lat"], p["lng"])) <= 8]
-    found.sort(key=lambda p: place_score(p["rating"], p["rating_count"]) - road_km((lat, lng), (p["lat"], p["lng"])),
-               reverse=True)
+    close = [p for p in found if road_km((lat, lng), (p["lat"], p["lng"])) <= 2.5]
+    found = close if len(close) >= 2 else found  # a short walk/ride beats a slightly better rating across town
+    found.sort(key=lambda p: place_score(p["rating"], p["rating_count"])
+               - 1.5 * road_km((lat, lng), (p["lat"], p["lng"])), reverse=True)
     return found
 
 
@@ -332,7 +339,7 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
     queries = [f"top tourist attractions in {destination}"]
     for interest in interests:
         queries += [f"{q} in {destination}" for q in INTEREST_QUERIES.get(interest, [])]
-    if days * max_visits > 15:  # one search returns at most 20 places; longer trips need a bigger pool
+    if days >= 2:  # one search returns at most 20 places; a pool to group into compact days needs more
         queries += [f"{q} in {destination}" for q in ("museums", "historical places", "parks and gardens", "famous temples")]
     queries = list(dict.fromkeys(queries))
     results = await asyncio.gather(*[search_places(q, near=center, limit=20) for q in queries[:10]],
@@ -359,7 +366,7 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
         except HTTPException:
             hit = []
         if hit and hit[0]["name"].lower() not in {f["name"].lower() for f in forced}:
-            forced.append(hit[0])
+            forced.append({**hit[0], "must_visit": True})
             pool.pop(hit[0]["name"].lower(), None)
     if not pool and not forced:
         failed = next((r for r in results if isinstance(r, HTTPException)), None)
@@ -375,31 +382,37 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
     if interests:
         weights = {c: weights.get(c, 0.3) for c in UserPreferences.model_fields}
 
-    poi_list = []
+    pois: Dict[int, Any] = {}
     for idx, p in enumerate(ranked, 1):
         open_t, close_t = _open_close(p.get("hours", []))
         cat = p["category"] if p["category"] in UserPreferences.model_fields else "culture"
         score = 10.0 if p in forced else place_score(p["rating"], p["rating_count"])
         try:
-            poi_list.append(MultiDayPOI(id=idx, name=p["name"], lat=p["lat"], lng=p["lng"],
-                                        duration=VISIT_MINUTES.get(p["category"], 75) / 60, open=open_t, close=close_t,
-                                        category=cat, score=round(score, 2)))
+            pois[idx] = MultiDayPOI(id=idx, name=p["name"], lat=p["lat"], lng=p["lng"],
+                                    duration=VISIT_MINUTES.get(p["category"], 75) / 60, open=open_t, close=close_t,
+                                    category=cat, score=round(score, 2))
         except ValueError as e:  # one place with odd data must never sink the whole trip
             logger.warning(f"Skipping {p['name']}: {e}")
     state = {"estimated": False}
     distance_source.set(state)
-    request = MultiDayPlanRequest(
-        start_location=Location(lat=origin[0], lng=origin[1]), days=days, available_hours_per_day=hours,
-        poi_list=poi_list, user_preferences=UserPreferences(**weights),
-        constraints=PlanningConstraints(max_pois_per_day=max_visits, min_pois_per_day=1),
-        start_time=DAY_START, transportation_mode="walking" if mode == "walking" else "driving")
-    try:
-        plan = await plan_multiday_itinerary(request)
-        schedule = {d.day: [ranked[s.poi_id - 1] for s in d.schedule] for d in plan.itinerary}
-    except Exception as e:  # the solver can fail on odd inputs; fall back to a greedy nearest-neighbour plan
-        logger.warning(f"Planner failed, using greedy fallback: {e}")
-        schedule = _greedy_days(ranked, origin, days, max_visits)
-        state["estimated"] = True
+    # one area per day (places close together), then the route solver picks and times that day's stops
+    schedule: Dict[int, List[Dict]] = {}
+    ids = {id(p): i for i, p in enumerate(ranked, 1)}
+    for day, area in area_days(ranked, days, max_visits).items():
+        request = MultiDayPlanRequest(
+            start_location=Location(lat=origin[0], lng=origin[1]), days=1, available_hours_per_day=hours,
+            poi_list=[pois[ids[id(p)]] for p in area if ids[id(p)] in pois],
+            user_preferences=UserPreferences(**weights),
+            constraints=PlanningConstraints(max_pois_per_day=max_visits, min_pois_per_day=1),
+            start_time=DAY_START, transportation_mode="walking" if mode == "walking" else "driving")
+        try:
+            plan = await plan_multiday_itinerary(request)
+            chosen = [ranked[s.poi_id - 1] for d in plan.itinerary for s in d.schedule]
+        except Exception as e:  # the solver can fail on odd inputs; the area's best places still make a day
+            logger.warning(f"Planner failed for day {day}, using the area's best places: {e}")
+            chosen = area[:max_visits]
+            state["estimated"] = True
+        schedule[day] = trim_outliers(chosen, [p for p in area if p not in chosen])
 
     # each place once across the whole trip, and every must-visit / saved place guaranteed a slot
     seen: set = set()
@@ -415,6 +428,8 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
             day = min(range(1, days + 1), key=lambda d: len(schedule.get(d, [])))
             schedule.setdefault(day, []).append(p)
             seen.add(p["name"].lower())
+
+    schedule = {day: order_route(places, origin) for day, places in schedule.items()}
 
     if any(p.get("source") == "openstreetmap" for p in ranked):
         prefs = {**prefs, "places_source": "openstreetmap"}
@@ -472,18 +487,95 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
     return trip
 
 
-def _greedy_days(ranked: List[Dict], origin: Tuple[float, float], days: int, per_day: int) -> Dict[int, List[Dict]]:
-    remaining = list(ranked)
+def _pt(p: Dict) -> Tuple[float, float]:
+    return p["lat"], p["lng"]
+
+
+def area_days(ranked: List[Dict], days: int, per_day: int) -> Dict[int, List[Dict]]:
+    """Group the best places into one compact area per day.
+
+    Each day starts from the best place not used yet and gathers the best places near it: within CLUSTER_KM,
+    widening step by step only when too few are near (spread-out destinations like Goa). Each area holds up to 2x a day's stops so the
+    solver can still choose by opening hours. Places open only part of the day (e.g. night markets) are left out
+    unless they are must-visit (score 10, ranked first)."""
+    def daytime(p: Dict) -> bool:
+        open_t, close_t = _open_close(p.get("hours", []))
+        return open_t <= "11:00" and close_t >= "16:00"
+
+    def words(p: Dict) -> set:
+        return {w for w in re.sub(r"[^a-z0-9 ]", " ", p["name"].lower()).split() if len(w) > 2} - STOPWORDS
+
+    # words in many names ("Udaipur", "Mumbai") say nothing about what a place is
+    counts = Counter(w for p in ranked for w in words(p))
+    common = {w for w, n in counts.items() if n > max(3, len(ranked) // 5)}
+
+    def same_kind(p: Dict, q: Dict) -> bool:
+        return p.get("category") == q.get("category") and bool((words(p) & words(q)) - common)
+
+    pool = [p for p in ranked if daytime(p) or p.get("must_visit")]
     out: Dict[int, List[Dict]] = {}
     for day in range(1, days + 1):
-        here, chosen = origin, []
-        while remaining and len(chosen) < per_day:
-            nxt = min(remaining, key=lambda p: haversine_km(here, (p["lat"], p["lng"])))
-            remaining.remove(nxt)
-            chosen.append(nxt)
-            here = (nxt["lat"], nxt["lng"])
-        out[day] = chosen
+        if not pool:
+            break
+        seed = pool.pop(0)
+        area = [seed]
+        for radius in (CLUSTER_KM, 2 * CLUSTER_KM, 4 * CLUSTER_KM, 8 * CLUSTER_KM, None):
+            for p in [p for p in pool if radius is None or haversine_km(_pt(seed), _pt(p)) <= radius]:
+                if len(area) >= per_day * 2:
+                    break
+                if any(same_kind(p, q) for q in area):
+                    continue  # three wax museums in a day is not a plan; it stays available for another day
+                area.append(p)
+                pool.remove(p)
+            if len(area) >= per_day:
+                break
+        out[day] = area
     return out
+
+
+def trim_outliers(places: List[Dict], spare: List[Dict]) -> List[Dict]:
+    """A stop far from the rest of its day (the solver optimises quality, not distance) is swapped for an unused
+    place of the same area near the day's centre, or dropped: one stop fewer beats crossing town and back.
+    Must-visit places always stay."""
+    if len(places) < 3:
+        return places
+    centre = min(places, key=lambda c: sum(haversine_km(_pt(c), _pt(p)) for p in places))
+    dists = sorted(haversine_km(_pt(centre), _pt(p)) for p in places)
+    limit = max(CLUSTER_KM, 2 * dists[len(dists) // 2])
+    kept = []
+    for p in places:
+        if p.get("must_visit") or haversine_km(_pt(centre), _pt(p)) <= limit:
+            kept.append(p)
+            continue
+        near = next((s for s in spare if haversine_km(_pt(centre), _pt(s)) <= limit), None)
+        if near:
+            spare.remove(near)
+            kept.append(near)
+    return kept
+
+
+def order_route(places: List[Dict], start: Tuple[float, float]) -> List[Dict]:
+    """Shortest visiting order from `start` (open path): nearest neighbour, then 2-opt. Days have <= ~6 stops."""
+    route, here, left = [], start, list(places)
+    while left:
+        nxt = min(left, key=lambda p: haversine_km(here, _pt(p)))
+        left.remove(nxt)
+        route.append(nxt)
+        here = _pt(nxt)
+
+    def length(r: List[Dict]) -> float:
+        pts = [start] + [_pt(p) for p in r]
+        return sum(haversine_km(a, b) for a, b in zip(pts, pts[1:]))
+
+    improved = True
+    while improved:
+        improved = False
+        for i in range(len(route) - 1):
+            for j in range(i + 1, len(route)):
+                candidate = route[:i] + route[i:j + 1][::-1] + route[j + 1:]
+                if length(candidate) < length(route) - 1e-6:
+                    route, improved = candidate, True
+    return route
 
 
 # ---------- serialisation ----------
@@ -867,13 +959,10 @@ def _nearest_order(trip: Trip, day_items: List[Dict]) -> List[int]:
     free = [i for i in day_items if i["status"] == "planned" and not i["locked"]]
     here = (fixed[-1]["lat"], fixed[-1]["lng"]) if fixed and fixed[-1].get("lat") else (trip.start_lat, trip.start_lng)
     order = [i["id"] for i in fixed]
-    visits = [i for i in free if i["kind"] == "visit"]
+    visits = [i for i in free if i["kind"] == "visit" and i.get("lat") is not None]
     meals = [i for i in free if i["kind"] == "meal"]
-    while visits:
-        nxt = min(visits, key=lambda i: haversine_km(here, (i["lat"], i["lng"])))
-        visits.remove(nxt)
-        order.append(nxt["id"])
-        here = (nxt["lat"], nxt["lng"])
+    order += [i["id"] for i in order_route(visits, here)]
+    order += [i["id"] for i in free if i["kind"] == "visit" and i.get("lat") is None]
     # meals go back where lunch/dinner belong: lunch after the first half, dinner last
     for m in sorted(meals, key=lambda m: m["name"]):
         order.insert(max(1, len(order) // 2) if m["name"].lower().startswith("lunch") else len(order), m["id"])

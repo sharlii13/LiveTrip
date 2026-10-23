@@ -1,5 +1,6 @@
 """Restaurant, stay, mood and nearby recommendations, plus the conversational assistant."""
 import re
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import User, get_db
+from . import ai_assistant
 from .core import loads, optional_user
 from .geo import VISIT_MINUTES, road_km, search_places, travel_minutes
 from .models import Trip
@@ -135,11 +137,19 @@ async def places_search(query: str, limit: int = 8, lat: Optional[float] = None,
 
 # ---------- assistant ----------
 
+class ChatTurn(BaseModel):
+    role: str = Field(..., pattern="^(user|assistant)$")
+    text: str = Field(..., max_length=2000)
+
+
 class AssistantIn(BaseModel):
     message: str = Field(..., min_length=1, max_length=500)
     trip_id: Optional[int] = None
     lat: Optional[float] = Field(None, ge=-90, le=90)
     lng: Optional[float] = Field(None, ge=-180, le=180)
+    history: List[ChatTurn] = Field(default_factory=list, max_length=20)  # the chat so far, oldest first
+    page: Optional[str] = Field(None, max_length=200)  # where in the app the traveller is
+    language: Optional[str] = Field(None, max_length=10)  # app language code, e.g. "hi"
 
 
 def _where(trip: Optional[Trip], items: List[Dict], body: AssistantIn) -> Optional[Tuple[float, float]]:
@@ -166,13 +176,11 @@ def _names(places: List[Dict], n: int = 5) -> str:
     return "\n".join(f"- {p['name']} ({p['rating']}★, {p['distance_km']} km)" for p in places[:n])
 
 
-@router.post("/assistant/message")
-async def assistant(body: AssistantIn, user: Optional[User] = Depends(optional_user), db: Session = Depends(get_db)):
-    """Understands common trip requests and calls the matching recommendation or rescheduling feature.
-    Changes come back as a proposal; the app applies them with /itinerary/{id}/apply after the user confirms."""
-    text = _numbers_to_digits(body.message.lower())
-    trip = get_trip(db, body.trip_id, user) if body.trip_id else None
-    items = load_items(db, trip) if trip else []
+async def _rules(message: str, body: "AssistantIn", trip: Optional[Trip], items: List[Dict], user: Optional[User],
+                 db: Session) -> Dict:
+    """Keyword assistant (used without an Anthropic key): recognises common trip requests and calls the matching
+    recommendation or rescheduling feature. Changes come back as a proposal the user confirms."""
+    text = _numbers_to_digits(message.lower())
     prefs = loads(trip.preferences, {}) if trip else {}
     where = _where(trip, items, body)
     boosts = preferred_categories(db, user)
@@ -224,7 +232,7 @@ async def assistant(body: AssistantIn, user: Optional[User] = Depends(optional_u
             return need_location()
         diet = "vegan" if "vegan" in text else "vegetarian" if ("vegetarian" in text or prefs.get("food") == "vegetarian") else "any"
         found = await restaurants(*where, diet=diet, radius_km=float(km_match.group(1)) if km_match else 3, boosts=boosts)
-        return {"reply": (f"{'Vegetarian ' if diet == 'vegetarian' else 'Vegan ' if diet == 'vegan' else ''}places to eat nearby:\n"
+        return {"reply": (f"{'Vegetarian places' if diet == 'vegetarian' else 'Vegan places' if diet == 'vegan' else 'Places'} to eat nearby:\n"
                           + _names(found)) if found else "I could not find a matching restaurant nearby.",
                 "intent": "restaurants", "places": found}
     if any(w in text for w in ("cheap", "budget", "free", "cost less")):
@@ -281,3 +289,164 @@ async def assistant(body: AssistantIn, user: Optional[User] = Depends(optional_u
         "- \"Replace my next activity with an indoor attraction\"\n- \"Make the rest of my day more relaxed\"\n"
         "- \"Find something interesting within 2 km\"\n- \"I have only two hours left\"\n- \"Suggest a cheaper alternative\"\n"
         "- \"I'm running 40 minutes late\"")}
+
+
+def _trip_context(trip: Optional[Trip], items: List[Dict], body: AssistantIn) -> str:
+    """What the AI needs to know about the traveller's situation, as compact text."""
+    lines = [f"Now: {datetime.now().strftime('%A %d %B %Y, %H:%M')} (server time)",
+             f"App page: {body.page or 'unknown'}", f"App language: {body.language or 'en'}"]
+    if body.lat is not None and body.lng is not None:
+        lines.append(f"Traveller's location: {body.lat:.5f}, {body.lng:.5f}")
+    if not trip:
+        lines.append("No trip is open.")
+        return "\n".join(lines)
+    prefs = loads(trip.preferences, {})
+    lines.append(f"Open trip: {trip.destination}, {trip.start_date} to {trip.end_date}; food preference "
+                 f"{prefs.get('food') or 'none'}; getting around by {prefs.get('mode', 'driving')}.")
+    nxt = next_item(trip, items)
+    if nxt:
+        lines.append(f"Next stop: {nxt['name']} (item_id {nxt['id']}, day {nxt['day']} at {nxt['start']}).")
+    day = None
+    for i in sorted(items, key=lambda i: (i["day"], i["position"])):
+        if i["day"] != day:
+            day = i["day"]
+            lines.append(f"Day {day}:")
+        rating = f", {i['rating']} stars" if i.get("rating") else ""
+        lines.append(f"- [{i['id']}] {i['start']}-{i['end']} {i['name']} ({i['kind']}, {i['category']}{rating}, "
+                     f"{i['status']}{', confirmed' if i.get('locked') else ''})")
+    return "\n".join(lines)
+
+
+def _compact(places: List[Dict], n: int = 6) -> List[Dict]:
+    keys = ("name", "place_id", "address", "lat", "lng", "rating", "rating_count", "category", "outdoor",
+            "distance_km", "travel_min")
+    return [{k: p[k] for k in keys if k in p} for p in places[:n]]
+
+
+def _ai_tools(body: AssistantIn, trip: Optional[Trip], items: List[Dict], user: Optional[User], db: Session):
+    """The assistant's tools, each a thin wrapper over an existing LiveTrip feature."""
+    from .placeinfo import place_info
+    from .planning import alternatives_for
+
+    prefs = loads(trip.preferences, {}) if trip else {}
+    boosts = preferred_categories(db, user)
+    taken = {i["name"] for i in items}
+    last_found: List[Dict] = []
+
+    def point(near: str = "next_stop") -> Optional[Tuple[float, float]]:
+        if near == "my_location" and body.lat is not None and body.lng is not None:
+            return body.lat, body.lng
+        stops = [(i["lat"], i["lng"]) for i in items if i["kind"] == "visit" and i.get("lat") is not None]
+        if near == "trip_centre" and stops:
+            return sum(s[0] for s in stops) / len(stops), sum(s[1] for s in stops) / len(stops)
+        return _where(trip, items, body)
+
+    def no_point():
+        return {"error": "No location: ask the traveller to share their location or open a trip."}
+
+    def remember(places: List[Dict]) -> Dict:
+        last_found[:] = places
+        return {"places": _compact(places)}
+
+    async def find_places(query: str, near: str = "next_stop", radius_km: float = 3):
+        where = point(near)
+        if not where:
+            return no_point()
+        found = await search_places(query[:100], near=where, limit=20)
+        ranked = _rank([p for p in found if p["category"] != "lodging" and p["name"] not in taken], where, boosts)
+        return remember([p for p in ranked if p["distance_km"] <= min(max(radius_km, 0.5), 30)])
+
+    async def find_restaurants(diet: str = "any", near: str = "next_stop", radius_km: float = 3):
+        where = point(near)
+        if not where:
+            return no_point()
+        return remember(await restaurants(*where, diet=diet, radius_km=min(max(radius_km, 0.5), 20), boosts=boosts))
+
+    async def find_stays(budget: str = "medium"):
+        if not trip:
+            return {"error": "No trip is open."}
+        stays = await recommend_stays(trip_id=trip.id, budget=budget, user=user, db=db)
+        return {**remember(stays["results"]), "note": stays["note"]}
+
+    async def get_place_info(name: str):
+        stop = next((i for i in items if name.lower() in i["name"].lower()), None)
+        info = await place_info(name[:200], stop["lat"] if stop else None, stop["lng"] if stop else None,
+                                trip.destination if trip else "")
+        return {"name": name, "description": info["description"] or "No Wikipedia article found.",
+                "url": info["url"]}
+
+    def proposal(ops: List[Dict], notes: List[str]) -> Dict:
+        preview = itinerary_out(db, trip, apply_ops(items, ops, prefs.get("mode", "driving")))
+        return {"proposed": notes, "proposal": {"ops": ops, "notes": notes, "version": trip.version,
+                                                "preview": preview}}
+
+    async def propose_plan_change(change: str, day: Optional[int] = None, minutes: Optional[int] = None):
+        if not trip:
+            return {"error": "No trip is open."}
+        get_trip(db, trip.id, user, edit=True)  # viewers of a shared trip can't change it
+        ops, notes = await build_ops(trip, items, change, day, max(1, min(minutes, 600)) if minutes else None)
+        return proposal(ops, notes) if ops else {"result": notes[0] if notes else "Nothing to change."}
+
+    async def propose_replace_stop(item_id: int, place_name: Optional[str] = None, reason: str = "nearby"):
+        if not trip:
+            return {"error": "No trip is open."}
+        get_trip(db, trip.id, user, edit=True)
+        item = next((i for i in items if i["id"] == item_id), None)
+        if not item or item["status"] != "planned":
+            return {"error": f"Item {item_id} is not a planned stop of this trip."}
+        place = next((p for p in last_found if place_name and p["name"].lower() == place_name.lower()), None)
+        if not place:
+            alts = await alternatives_for(item, reason if reason in ("indoor", "cheaper", "relaxed") else "nearby",
+                                          taken)
+            if not alts:
+                return {"error": f"No alternative found near {item['name']}."}
+            place = alts[0]
+        return proposal([{"op": "replace", "item_id": item_id, "place": place}],
+                        [f"Replace {item['name']} with {place['name']}"])
+
+    return {"find_places": find_places, "find_restaurants": find_restaurants, "find_stays": find_stays,
+            "get_place_info": get_place_info, "propose_plan_change": propose_plan_change,
+            "propose_replace_stop": propose_replace_stop}
+
+
+async def _about_stop(text: str, trip: Optional[Trip], items: List[Dict]) -> Optional[Dict]:
+    """Rule-based fallback for "tell me about X" / "when is X" where X is one of the trip's stops."""
+    from .placeinfo import place_info
+    low = text.lower()
+    stop = next((i for i in sorted(items, key=lambda i: -len(i["name"]))
+                 if i["kind"] == "visit" and i["name"].lower() in low), None)
+    if not stop:
+        return None
+    info = await place_info(stop["name"], stop["lat"], stop["lng"], trip.destination if trip else "")
+    when = f"{stop['name']} is on day {stop['day']}, {stop['start']}-{stop['end']}."
+    about = ". ".join((info.get("description") or "").split(". ")[:2]).strip()
+    return {"intent": "about", "reply": f"{when} {about}".strip(), "item_id": stop["id"]}
+
+
+@router.post("/assistant/message")
+async def assistant(body: AssistantIn, user: Optional[User] = Depends(optional_user), db: Session = Depends(get_db)):
+    """The travel assistant. With ANTHROPIC_API_KEY set, Claude answers with the chat history and trip as context
+    and calls LiveTrip's features as tools; otherwise (or if Claude is unreachable) the keyword assistant answers.
+    Plan changes always come back as a proposal; the app applies them with /itinerary/{id}/apply on confirm."""
+    trip = get_trip(db, body.trip_id, user) if body.trip_id else None
+    items = load_items(db, trip) if trip else []
+    history = [t.model_dump() for t in body.history[-12:]]
+    if ai_assistant.available():
+        try:
+            return await ai_assistant.reply(body.message, history, _trip_context(trip, items, body),
+                                            _ai_tools(body, trip, items, user, db))
+        except ai_assistant.Unavailable:
+            pass
+    result = await _rules(body.message, body, trip, items, user, db)
+    if result.get("intent") != "help":
+        return result
+    about = await _about_stop(body.message, trip, items)
+    if about:
+        return about
+    # a short follow-up ("and vegetarian?", "within 5 km?") continues the previous request
+    previous = next((t["text"] for t in reversed(history) if t["role"] == "user"), None)
+    if previous:
+        again = await _rules(f"{previous} {body.message}", body, trip, items, user, db)
+        if again.get("intent") != "help":
+            return again
+    return result

@@ -1,11 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
 import {
-  Heart, User, LogOut, Sun, Moon, Calendar, MapPin, Camera, Trophy, Users, Images, History, Bot,
+  Heart, User, LogOut, Sun, Moon, Calendar, MapPin, Camera, Trophy, Users, Images, History, Bot, Languages,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import LiveTripLogo from "@/components/LiveTripLogo";
+import { LANGUAGES, currentLanguage, setLanguage } from "@/lib/translate";
 import { useState, useEffect } from "react";
 import {
   DropdownMenu,
@@ -18,7 +19,7 @@ import {
 const NAV = [
   { to: "/", label: "Home" },
   { to: "/trips", label: "My Trips", live: true },
-  { to: "/feed", label: "Feed" },
+  { to: "/feed", label: "Photo feed" },
   { to: "/rewards", label: "Rewards" },
   { to: "/groups", label: "Groups" },
   { to: "/map", label: "Map" },
@@ -40,6 +41,12 @@ export default function Navbar() {
   const location = useLocation();
   const { user, isAuthenticated, login, logout } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [language, setLanguageState] = useState(currentLanguage());
+  useEffect(() => {
+    const sync = () => setLanguageState(currentLanguage());
+    window.addEventListener("livetrip-language", sync);
+    return () => window.removeEventListener("livetrip-language", sync);
+  }, []);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -99,7 +106,7 @@ export default function Navbar() {
             </Link>
             <Link to="/feed">
               <span className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer">
-                <Camera className="w-4 h-4" /><span>Feed</span>
+                <Camera className="w-4 h-4" /><span>Photo feed</span>
               </span>
             </Link>
           </nav>
@@ -116,6 +123,22 @@ export default function Navbar() {
             <Link to="/wishlist" title="Saved places" data-testid="button-favorites">
               <Heart className="w-5 h-5 text-foreground hover:text-primary transition-colors duration-200 hover:scale-110" />
             </Link>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="text-foreground hover:text-primary transition-colors flex items-center gap-1 text-xs font-medium uppercase"
+                        title="Language" aria-label="Change language" translate="no">
+                  <Languages className="w-5 h-5" />{language === "en" ? "" : language.split("-")[0]}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto" translate="no">
+                {LANGUAGES.map((l) => (
+                  <DropdownMenuItem key={l.code} onClick={() => setLanguage(l.code)} className={l.code === language ? "font-semibold" : ""}>
+                    {l.flag} {l.native}{l.native !== l.name ? ` · ${l.name}` : ""}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <button
               onClick={toggleDarkMode}

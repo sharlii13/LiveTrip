@@ -31,8 +31,8 @@ ROAD_FACTOR = 1.3  # straight line -> road distance
 
 SERVICE_TYPES = {"tour_agency", "travel_agency", "tourist_information_center", "taxi_service",
                  "transportation_service", "real_estate_agency", "car_rental"}
-SERVICE_NAME = re.compile(r"^things to do\b|sightseeing (tour|package)|\btours? (and|&) travels?\b|\btour packages?\b",
-                          re.IGNORECASE)
+SERVICE_NAME = re.compile(r"^things to do\b|sightseeing (tour|package)|\btours? (and|&) travels?\b|\btour packages?\b|"
+                          r"\btours?$|\btours? (company|operator|agency)\b|\bexcursions?$", re.IGNORECASE)
 
 
 def is_service(types: List[str], name: str) -> bool:

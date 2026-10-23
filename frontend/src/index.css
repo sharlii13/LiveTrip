@@ -102,3 +102,17 @@
     transform: translateY(-2px);
   }
 }
+
+/* Google website translator (lib/translate.ts): keep its toolbar and hover popups out of the app */
+.goog-te-banner-frame, iframe.skiptranslate, #goog-gt-tt, .goog-te-balloon-frame, .VIpgJd-ZVi9od-ORHb-OEVmcd { display: none !important; }
+body { top: 0 !important; }
+.goog-text-highlight { background: none !important; box-shadow: none !important; }
+
+/* travel buddy (components/AssistantBuddy.tsx) */
+@keyframes buddy-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes buddy-blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.1); } }
+@keyframes buddy-pop { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
+.buddy-bob { animation: buddy-bob 2.6s ease-in-out infinite; }
+.buddy-blink { animation: buddy-blink 4.5s infinite; }
+.buddy-pop { animation: buddy-pop 180ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .buddy-bob, .buddy-blink, .buddy-pop { animation: none; } }

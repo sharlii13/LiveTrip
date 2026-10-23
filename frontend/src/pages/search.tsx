@@ -1,4 +1,5 @@
 import { useState } from "react";
+import LanguageChecklist from "@/components/LanguageChecklist";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Calendar, User, Heart, Users, Home, PawPrint, Leaf, Utensils, Check, ChevronLeft, ChevronRight, Map, List, Shield, Globe, CheckCircle, Loader2 } from "lucide-react";
@@ -60,7 +61,6 @@ export default function SearchPage() {
   // Language preference states
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [languageSearch, setLanguageSearch] = useState('');
 
   const { data: destinations, isLoading } = useQuery<Destination[]>({
     queryKey: ["/api/destinations", searchParams],
@@ -746,46 +746,7 @@ export default function SearchPage() {
                       <p className="text-green-700 mb-4">
                         Select the languages you're comfortable with for better recommendations
                       </p>
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="languageSearch" className="text-sm font-medium">
-                            Search Languages
-                          </Label>
-                          <div className="relative mt-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                            <Input
-                              id="languageSearch"
-                              type="text"
-                              placeholder="Search for languages..."
-                              value={languageSearch}
-                              onChange={(e) => setLanguageSearch(e.target.value)}
-                              className="pl-10 border-green-300 focus:border-green-500 focus:ring-green-500"
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-green-200 rounded-lg p-3">
-                          {['English 🇺🇸', 'Spanish 🇪🇸', 'French 🇫🇷', 'German 🇩🇪', 'Italian 🇮🇹', 'Portuguese 🇵🇹', 'Russian 🇷🇺', 'Japanese 🇯🇵', 'Korean 🇰🇷', 'Chinese 🇨🇳', 'Arabic 🇸🇦', 'Hindi 🇮🇳'].map((lang) => {
-                            const isSelected = selectedLanguages.includes(lang);
-                            return (
-                              <label key={lang} className="flex items-center space-x-2 p-2 hover:bg-green-100 rounded cursor-pointer">
-                                <input 
-                                  type="checkbox" 
-                                  checked={isSelected}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setSelectedLanguages([...selectedLanguages, lang]);
-                                    } else {
-                                      setSelectedLanguages(selectedLanguages.filter(l => l !== lang));
-                                    }
-                                  }}
-                                  className="border-green-500 text-green-600 focus:ring-green-500" 
-                                />
-                                <span className="text-sm">{lang}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
+                      <LanguageChecklist selected={selectedLanguages} onChange={setSelectedLanguages} />
                     </div>
                   </div>
                 )}

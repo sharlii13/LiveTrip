@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Search, Globe, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import ProgressIndicator from "@/components/ProgressIndicator";
+import { LANGUAGES, languageAfterToggle, setLanguage } from "@/lib/translate";
 
 export default function LanguagePreference() {
   const { tripData, updateTripData, goToPreviousStep, goToNextStep } = useTripPlanning();
@@ -14,38 +15,7 @@ export default function LanguagePreference() {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(tripData.languages || []);
   const [isValid, setIsValid] = useState(selectedLanguages.length > 0);
 
-  const languages = [
-    { code: "en", name: "English", native: "English", flag: "🇺🇸" },
-    { code: "es", name: "Spanish", native: "Español", flag: "🇪🇸" },
-    { code: "fr", name: "French", native: "Français", flag: "🇫🇷" },
-    { code: "de", name: "German", native: "Deutsch", flag: "🇩🇪" },
-    { code: "it", name: "Italian", native: "Italiano", flag: "🇮🇹" },
-    { code: "pt", name: "Portuguese", native: "Português", flag: "🇵🇹" },
-    { code: "ru", name: "Russian", native: "Русский", flag: "🇷🇺" },
-    { code: "ja", name: "Japanese", native: "日本語", flag: "🇯🇵" },
-    { code: "ko", name: "Korean", native: "한국어", flag: "🇰🇷" },
-    { code: "zh", name: "Chinese", native: "中文", flag: "🇨🇳" },
-    { code: "ar", name: "Arabic", native: "العربية", flag: "🇸🇦" },
-    { code: "hi", name: "Hindi", native: "हिन्दी", flag: "🇮🇳" },
-    { code: "th", name: "Thai", native: "ไทย", flag: "🇹🇭" },
-    { code: "vi", name: "Vietnamese", native: "Tiếng Việt", flag: "🇻🇳" },
-    { code: "tr", name: "Turkish", native: "Türkçe", flag: "🇹🇷" },
-    { code: "pl", name: "Polish", native: "Polski", flag: "🇵🇱" },
-    { code: "nl", name: "Dutch", native: "Nederlands", flag: "🇳🇱" },
-    { code: "sv", name: "Swedish", native: "Svenska", flag: "🇸🇪" },
-    { code: "no", name: "Norwegian", native: "Norsk", flag: "🇳🇴" },
-    { code: "da", name: "Danish", native: "Dansk", flag: "🇩🇰" },
-    { code: "fi", name: "Finnish", native: "Suomi", flag: "🇫🇮" },
-    { code: "el", name: "Greek", native: "Ελληνικά", flag: "🇬🇷" },
-    { code: "he", name: "Hebrew", native: "עברית", flag: "🇮🇱" },
-    { code: "cs", name: "Czech", native: "Čeština", flag: "🇨🇿" },
-    { code: "hu", name: "Hungarian", native: "Magyar", flag: "🇭🇺" },
-    { code: "ro", name: "Romanian", native: "Română", flag: "🇷🇴" },
-    { code: "bg", name: "Bulgarian", native: "Български", flag: "🇧🇬" },
-    { code: "hr", name: "Croatian", native: "Hrvatski", flag: "🇭🇷" },
-    { code: "sk", name: "Slovak", native: "Slovenčina", flag: "🇸🇰" },
-    { code: "sl", name: "Slovenian", native: "Slovenščina", flag: "🇸🇮" }
-  ];
+  const languages = LANGUAGES;
 
   const filteredLanguages = languages.filter(lang =>
     lang.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -59,6 +29,7 @@ export default function LanguagePreference() {
     
     setSelectedLanguages(newSelection);
     setIsValid(newSelection.length > 0);
+    setLanguage(languageAfterToggle(newSelection, languageCode));  // the app switches language right away
   };
 
   const handleNext = () => {
@@ -129,6 +100,7 @@ export default function LanguagePreference() {
                         <div
                           key={language.code}
                           onClick={() => toggleLanguage(language.code)}
+                          translate="no"
                           className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                             isSelected
                               ? "border-blue-500 bg-blue-50 text-blue-800"
