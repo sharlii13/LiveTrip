@@ -94,10 +94,21 @@ TOOLS = [
          "day": {"type": "integer", "description": "Trip day number; default is the day of the next stop."},
          "minutes": {"type": "integer", "description": "For delay: how many minutes late (1-600)."}},
          "required": ["change"], "additionalProperties": False}},
+    {"name": "propose_add_stop",
+     "description": "Prepare adding one more stop to a day (it goes before dinner), for the traveller to confirm. "
+                    "Use this for 'add one more', 'add X to my day'. Give place_name from your last find_places "
+                    "result, or a query to search near the day's stops.",
+     "input_schema": {"type": "object", "properties": {
+         "day": {"type": "integer", "description": "Trip day number; default is the day of the next stop."},
+         "place_name": {"type": "string"},
+         "query": {"type": "string", "description": "What to look for if no place_name, e.g. 'temple', 'museum'."}},
+         "required": [], "additionalProperties": False}},
     {"name": "propose_replace_stop",
      "description": "Prepare swapping one planned stop (by item_id from <context>) for another place, for the "
-                    "traveller to confirm. Give place_name to use a place from your last find_places / "
-                    "find_restaurants result; otherwise the best nearby alternative for the reason is used.",
+                    "traveller to confirm. Never use it to add a stop. A lunch or dinner can only be swapped for "
+                    "another place to eat (from find_restaurants). Give place_name to use a place from your last "
+                    "find_places / find_restaurants result; otherwise the best nearby alternative for the reason "
+                    "is used.",
      "input_schema": {"type": "object", "properties": {
          "item_id": {"type": "integer"},
          "place_name": {"type": "string"},

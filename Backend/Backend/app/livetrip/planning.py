@@ -922,6 +922,9 @@ def apply_ops(items: List[Dict], ops: List[Dict], mode: str, starts: Optional[Di
             target["status"] = "skipped"
         elif kind == "replace":
             place = op["place"]
+            if target["kind"] == "meal" and place.get("category") != "food":
+                raise HTTPException(400, f"{target['name'].split(' ')[0]} can only be swapped for a place to eat; "
+                                         "add sights as a new stop instead")
             fresh = _new_item(target["day"], target["position"], place, kind=target["kind"])
             fresh["id"] = target["id"]
             if target["kind"] == "meal":

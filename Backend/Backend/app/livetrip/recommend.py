@@ -13,7 +13,7 @@ from .core import loads, optional_user
 from .geo import VISIT_MINUTES, geocode, road_km, search_places, travel_minutes
 from .models import Trip
 from .planning import (build_ops, day_starts, get_trip, itinerary_out, load_items, next_item, place_score,
-                       preferred_categories, apply_ops)
+                       preferred_categories, apply_ops, trip_days)
 
 router = APIRouter(prefix="/api", tags=["recommendations"])
 
@@ -457,6 +457,29 @@ def _ai_tools(body: AssistantIn, trip: Optional[Trip], items: List[Dict], user: 
         ops, notes = await build_ops(trip, items, change, day, max(1, min(minutes, 600)) if minutes else None)
         return proposal(ops, notes) if ops else {"result": notes[0] if notes else "Nothing to change."}
 
+    async def propose_add_stop(day: Optional[int] = None, place_name: Optional[str] = None,
+                               query: Optional[str] = None):
+        if not trip:
+            return {"error": "No trip is open."}
+        get_trip(db, trip.id, user, edit=True)
+        nxt = next_item(trip, items)
+        day = day or (nxt["day"] if nxt else 1)
+        if not 1 <= day <= trip_days(trip):
+            return {"error": f"This trip has {trip_days(trip)} days."}
+        place = next((p for p in last_found if place_name and p["name"].lower() == place_name.lower()), None)
+        if not place:
+            stops = [(i["lat"], i["lng"]) for i in items if i["day"] == day and i["kind"] == "visit" and i.get("lat")]
+            near = ((sum(s[0] for s in stops) / len(stops), sum(s[1] for s in stops) / len(stops)) if stops
+                    else point())
+            found = await search_places((query or place_name or "attractions")[:100], near=near, limit=20)
+            found = [p for p in _rank(found, near, boosts) if p["category"] not in ("lodging", "food")
+                     and p["name"] not in taken and p["distance_km"] <= 5]
+            if not found:
+                return {"error": "Nothing suitable found near that day's stops."}
+            place = found[0]
+        return proposal([{"op": "add", "day": day, "place": place}],
+                        [f"Add {place['name']} to day {day}, before dinner"])
+
     async def propose_replace_stop(item_id: int, place_name: Optional[str] = None, reason: str = "nearby"):
         if not trip:
             return {"error": "No trip is open."}
@@ -465,9 +488,13 @@ def _ai_tools(body: AssistantIn, trip: Optional[Trip], items: List[Dict], user: 
         if not item or item["status"] != "planned":
             return {"error": f"Item {item_id} is not a planned stop of this trip."}
         place = next((p for p in last_found if place_name and p["name"].lower() == place_name.lower()), None)
+        if place and item["kind"] == "meal" and place.get("category") != "food":
+            return {"error": f"{item['name']} is a meal: swap it for a place to eat (find_restaurants), or add "
+                             f"{place['name']} as a new stop with propose_add_stop."}
         if not place:
-            alts = await alternatives_for(item, reason if reason in ("indoor", "cheaper", "relaxed") else "nearby",
-                                          taken)
+            why = ("food" if item["kind"] == "meal"
+                   else reason if reason in ("indoor", "cheaper", "relaxed") else "nearby")
+            alts = await alternatives_for(item, why, taken)
             if not alts:
                 return {"error": f"No alternative found near {item['name']}."}
             place = alts[0]
@@ -476,7 +503,7 @@ def _ai_tools(body: AssistantIn, trip: Optional[Trip], items: List[Dict], user: 
 
     return {"find_places": find_places, "find_restaurants": find_restaurants, "find_stays": find_stays,
             "get_place_info": get_place_info, "propose_plan_change": propose_plan_change,
-            "propose_replace_stop": propose_replace_stop}
+            "propose_add_stop": propose_add_stop, "propose_replace_stop": propose_replace_stop}
 
 
 async def _about_stop(text: str, trip: Optional[Trip], items: List[Dict]) -> Optional[Dict]:

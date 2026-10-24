@@ -920,3 +920,47 @@ def test_dense_city_drops_a_stop_two_km_out():
     spare = {"name": "Kasba Ganpati", "lat": 18.519, "lng": 73.857}
     kept = [p["name"] for p in trim_outliers(near + [far], [spare])]
     assert "Ohel David Synagogue" not in kept and "Kasba Ganpati" in kept
+
+
+def test_meals_stay_meals_and_the_buddy_adds_stops_before_dinner(make_user, monkeypatch):
+    import copy
+    from livetrip import ai_assistant
+    a = make_user()
+    itin = make_trip(a, days=1)
+    tid = itin["id"]
+    slots = itin["days"][0]["time_slots"]
+    dinner = next(s for s in slots if s["activity"]["name"].startswith("Dinner"))
+    temple = {"name": "Ratneshwar Mahadev temple", "lat": 25.3, "lng": 83.0, "category": "religious", "place_id": "t1"}
+    bad = a.post(f"/api/itinerary/{tid}/apply", json={"ops": [{"op": "replace", "item_id": dinner["item_id"], "place": temple}],
+                                                      "expected_version": itin["version"]})
+    assert bad.status_code == 400 and "place to eat" in bad.json()["detail"]
+
+    replies = [
+        {"candidates": [{"content": {"parts": [{"functionCall": {"name": "propose_replace_stop",
+                                                                  "args": {"item_id": dinner["item_id"], "place_name": "x"}}}]}}]},
+        {"candidates": [{"content": {"parts": [{"functionCall": {"name": "propose_add_stop", "args": {"query": "temple"}}}]}}]},
+        {"candidates": [{"content": {"parts": [{"text": "I added one more stop before dinner; review it."}]}}]},
+    ]
+    sent = []
+
+    class Fake:
+        def __init__(self, **kw): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *x): return False
+        async def post(self, url, headers, json):
+            sent.append(copy.deepcopy(json))
+            body = replies[len(sent) - 1]
+            class R:
+                status_code = 200
+                def json(self): return body
+            return R()
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test")
+    monkeypatch.setattr(ai_assistant, "_gemini_last_good", None)
+    monkeypatch.setattr(ai_assistant, "_gemini_resting", {})
+    monkeypatch.setattr(ai_assistant.httpx, "AsyncClient", Fake)
+    res = a.post("/api/assistant/message", json={"message": "one more", "trip_id": int(tid)}).json()
+    assert res["proposal"]["ops"][0]["op"] == "add"
+    preview = res["proposal"]["preview"]["days"][0]["time_slots"]
+    assert preview[-1]["activity"]["name"].startswith("Dinner")          # dinner kept, and still last
+    assert len(preview) == len(slots) + 1
