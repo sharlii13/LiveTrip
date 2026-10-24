@@ -57,6 +57,7 @@ export default function TripDetail() {
   const [reason, setReason] = useState("nearby");
   const [alternatives, setAlternatives] = useState<Place[] | null>(null);
   const [lateMinutes, setLateMinutes] = useState("30");
+  const [dayStart, setDayStart] = useState<Record<number, string>>({});  // edited, not yet saved
   const [busy, setBusy] = useState<string | null>(null);
   const [stays, setStays] = useState<Place[] | null>(null);
   const [stayBudget, setStayBudget] = useState("medium");
@@ -106,6 +107,13 @@ export default function TripDetail() {
     run("apply", async () => {
       setTrip(await api<Trip>(`/api/itinerary/${id}/apply`, { method: "POST", json: { ops, expected_version: trip?.version } }));
       toast({ title: message });
+    });
+
+  const setStart = (day: number, time: string) =>
+    run(`start-${day}`, async () => {
+      setTrip(await api<Trip>(`/api/itinerary/${id}/day-start`, { method: "POST", json: { day, time } }));
+      setDayStart(({ [day]: _, ...rest }) => rest);
+      toast({ title: `Day ${day} now starts at ${time}`, description: "Every stop has been re-timed." });
     });
 
   const checkIn = (slot: Slot) =>
@@ -330,6 +338,16 @@ export default function TripDetail() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <label htmlFor={`start-${d.day}`}>Day starts at</label>
+                    <Input id={`start-${d.day}`} className="w-28 h-8" type="time" min="05:00" max="13:00" step={300}
+                           value={dayStart[d.day] ?? d.day_start ?? "09:00"}
+                           onChange={(e) => setDayStart((s) => ({ ...s, [d.day]: e.target.value }))} />
+                    <Button size="sm" variant="outline" data-buddy="start"
+                            disabled={!!busy || !dayStart[d.day] || dayStart[d.day] === (d.day_start ?? "09:00")}
+                            onClick={() => setStart(d.day, dayStart[d.day])}>
+                      Set
+                    </Button>
+                    <span className="mx-1 text-muted-foreground">·</span>
                     <span>Running late?</span>
                     <Input className="w-20 h-8" type="number" min={5} max={600} value={lateMinutes} onChange={(e) => setLateMinutes(e.target.value)} />
                     <span>min</span>

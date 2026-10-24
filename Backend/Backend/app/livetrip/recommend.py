@@ -12,8 +12,8 @@ from . import ai_assistant
 from .core import loads, optional_user
 from .geo import VISIT_MINUTES, geocode, road_km, search_places, travel_minutes
 from .models import Trip
-from .planning import (build_ops, get_trip, itinerary_out, load_items, next_item, place_score, preferred_categories,
-                       apply_ops)
+from .planning import (build_ops, day_starts, get_trip, itinerary_out, load_items, next_item, place_score,
+                       preferred_categories, apply_ops)
 
 router = APIRouter(prefix="/api", tags=["recommendations"])
 
@@ -237,7 +237,7 @@ async def _rules(message: str, body: "AssistantIn", trip: Optional[Trip], items:
         ops, notes = await build_ops(trip, items, reason, day, minutes)
         if not ops:
             return {"reply": notes[0] if notes else "There is nothing to change.", "intent": reason}
-        preview = itinerary_out(db, trip, apply_ops(items, ops, prefs.get("mode", "driving")))
+        preview = itinerary_out(db, trip, apply_ops(items, ops, prefs.get("mode", "driving"), day_starts(trip)))
         return {"reply": "Here is what I would change:\n" + "\n".join(f"- {n}" for n in notes) +
                          "\nConfirm to apply it.", "intent": reason,
                 "proposal": {"ops": ops, "notes": notes, "version": trip.version, "preview": preview}}
@@ -294,7 +294,7 @@ async def _rules(message: str, body: "AssistantIn", trip: Optional[Trip], items:
         if not alts:
             return {"reply": f"No cheaper option found near {nxt['name']}.", "intent": "cheaper"}
         preview = itinerary_out(db, trip, apply_ops(items, [{"op": "replace", "item_id": nxt["id"], "place": alts[0]}],
-                                                    prefs.get("mode", "driving")))
+                                                    prefs.get("mode", "driving"), day_starts(trip)))
         return {"reply": f"Cheaper option instead of {nxt['name']}: {alts[0]['name']}. Confirm to swap.",
                 "intent": "cheaper", "places": alts,
                 "proposal": {"ops": [{"op": "replace", "item_id": nxt["id"], "place": alts[0]}],
@@ -446,7 +446,7 @@ def _ai_tools(body: AssistantIn, trip: Optional[Trip], items: List[Dict], user: 
                 "url": info["url"]}
 
     def proposal(ops: List[Dict], notes: List[str]) -> Dict:
-        preview = itinerary_out(db, trip, apply_ops(items, ops, prefs.get("mode", "driving")))
+        preview = itinerary_out(db, trip, apply_ops(items, ops, prefs.get("mode", "driving"), day_starts(trip)))
         return {"proposed": notes, "proposal": {"ops": ops, "notes": notes, "version": trip.version,
                                                 "preview": preview}}
 

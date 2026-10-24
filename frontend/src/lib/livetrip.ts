@@ -145,7 +145,7 @@ export interface Trip {
   places_note?: string;
   start_location: { lat: number; lng: number };
   user_preferences: Record<string, any>;
-  days: { day: number; date: string; time_slots: Slot[]; total_travel_time: number }[];
+  days: { day: number; date: string; time_slots: Slot[]; total_travel_time: number; day_start?: string }[];
 }
 
 export interface Op {

@@ -205,15 +205,22 @@ def load_items(db: Session, trip: Trip) -> List[Dict[str, Any]]:
     return [item_dict(i) for i in rows]
 
 
-def reflow(items: List[Dict[str, Any]], mode: str, delays: Optional[Dict[int, int]] = None) -> List[Dict[str, Any]]:
-    """Recompute times day by day. Completed and locked items keep their times; skipped items are ignored."""
-    delays = delays or {}
+def day_starts(trip: Trip) -> Dict[str, str]:
+    """The traveller's chosen start time per day ({"2": "07:30"}); days not listed start at DAY_START."""
+    return loads(trip.preferences, {}).get("day_starts") or {}
+
+
+def reflow(items: List[Dict[str, Any]], mode: str, delays: Optional[Dict[int, int]] = None,
+           starts: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+    """Recompute times day by day from each day's start. Completed and locked items keep their times; skipped
+    items are ignored."""
+    delays, starts = delays or {}, starts or {}
     by_day: Dict[int, List[Dict]] = {}
     for it in items:
         by_day.setdefault(it["day"], []).append(it)
     for day, day_items in by_day.items():
         day_items.sort(key=lambda x: x["position"])
-        cursor = hhmm_to_min(DAY_START)
+        cursor = hhmm_to_min(starts.get(str(day), DAY_START))
         prev = None
         delay_left = delays.get(day, 0)
         for it in day_items:
@@ -294,6 +301,26 @@ def rank_places(places: List[Dict], boosts: Dict[str, float], exclude: set) -> L
     out = [p for p in places if p["name"] not in exclude and p.get("place_id") not in exclude]
     return sorted(out, key=lambda p: place_score(p["rating"], p["rating_count"]) + boosts.get(p["category"], 0),
                   reverse=True)
+
+
+MEAL_TIMES = {"Lunch": ("12:30", "13:30"), "Dinner": ("19:30", "20:30")}
+# breakfast and snack spots: great in the morning, wrong for lunch or dinner ("Sudamache Pohe")
+NOT_A_MEAL = re.compile(r"\b(pohe|poha|breakfast|nashta|nasta|upma|tiffins?|chai|tea ?(stall|house|point)|juice|"
+                        r"sweets?|mithai|ice ?cream|bakery|bakers|dessert|pastry|cake shop|kulfi|lassi)\b", re.IGNORECASE)
+NOT_A_MEAL_TYPES = {"bakery", "cafe", "coffee_shop", "ice_cream_shop", "dessert_shop", "juice_shop", "confectionery",
+                    "tea_house", "breakfast_restaurant", "donut_shop"}
+
+
+def fits_meal(place: Dict, label: str) -> bool:
+    """Is this a place for a proper lunch/dinner, open then? (Unknown hours count as open.)"""
+    types = set(place.get("types") or [])
+    if NOT_A_MEAL.search(place.get("name", "")) or (types & NOT_A_MEAL_TYPES and not types & {"restaurant"}):
+        return False
+    if place.get("hours"):
+        open_t, close_t = _open_close(place["hours"])
+        start, end = MEAL_TIMES.get(label, ("12:30", "13:30"))
+        return open_t <= start and close_t >= end
+    return True
 
 
 async def restaurant_options(lat: float, lng: float, food_pref: str) -> List[Dict]:
@@ -470,7 +497,7 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
     # look all restaurants up at once (one Google call each); picking stays in order so none repeats
     options = await asyncio.gather(*[restaurant_options(a["lat"], a["lng"], prefs.get("food", "")) for _, _, a in meals])
     for (day, label, anchor), found in zip(meals, options):
-        spot = next((o for o in found if o["name"] not in used), None)
+        spot = next((o for o in found if o["name"] not in used and fits_meal(o, label)), None)
         meal = _new_item(day, anchor["position"], spot or {"name": "", "lat": anchor["lat"], "lng": anchor["lng"],
                                                            "category": "food", "outdoor": False}, kind="meal")
         meal["name"] = f"{label} at {spot['name']}" if spot else f"{label} break"
@@ -536,7 +563,7 @@ def next_area(pool: List[Dict], ranked: List[Dict], per_day: int, days_left: int
     cap = per_day * 2 if len(pool) >= days_left * per_day * 2 else max(1, -(-len(pool) // days_left))
     seed = pool.pop(0)
     area = [seed]
-    for radius in (CLUSTER_KM, 2 * CLUSTER_KM, 4 * CLUSTER_KM, 8 * CLUSTER_KM, None):
+    for radius in (CLUSTER_KM / 2, CLUSTER_KM, 2 * CLUSTER_KM, 4 * CLUSTER_KM, 8 * CLUSTER_KM, None):
         for p in [p for p in pool if radius is None or haversine_km(_pt(seed), _pt(p)) <= radius]:
             if len(area) >= cap:
                 break
@@ -568,7 +595,7 @@ def trim_outliers(places: List[Dict], spare: List[Dict]) -> List[Dict]:
         return places
     centre = min(places, key=lambda c: sum(haversine_km(_pt(c), _pt(p)) for p in places))
     dists = sorted(haversine_km(_pt(centre), _pt(p)) for p in places)
-    limit = max(CLUSTER_KM, 2 * dists[len(dists) // 2])
+    limit = max(CLUSTER_KM / 2, 2.5 * dists[len(dists) // 2])  # dense old towns get a tight circle
     kept = []
     for p in places:
         if p.get("must_visit") or haversine_km(_pt(centre), _pt(p)) <= limit:
@@ -629,6 +656,7 @@ def itinerary_out(db: Session, trip: Trip, items: Optional[List[Dict]] = None) -
                 },
             })
         days.append({"day": d, "date": (start + timedelta(days=d - 1)).isoformat(), "time_slots": slots,
+                     "day_start": (prefs.get("day_starts") or {}).get(str(d), DAY_START),
                      "total_budget": 0, "total_travel_time": sum(s["travel_min"] for s in slots
                                                                  if s["status"] != "skipped")})
     return {
@@ -762,7 +790,7 @@ async def update_preferences(trip_id: int, prefs: Dict[str, Any], user: Optional
                                         key=lambda x: (x["status"] != "completed", x["start"])), 1):
             it["position"] = pos
     trip.preferences = json.dumps(merged)
-    reflow(items, merged.get("mode", "driving"))
+    reflow(items, merged.get("mode", "driving"), starts=merged.get("day_starts"))
     save_items(db, trip, items)
     db.commit()
     return itinerary_out(db, trip)
@@ -856,6 +884,8 @@ async def alternatives_for(item: Dict, reason: str, taken: set, radius_km: float
             continue
         if reason in ("relaxed", "cheaper") and p["category"] in ("entertainment", "shopping"):
             continue
+        if item.get("kind") == "meal" and not fits_meal(p, item["name"].split(" ")[0]):
+            continue  # a dinner swap should still be a dinner place
         candidates.append({**p, "distance_km": round(road_km((item["lat"], item["lng"]), (p["lat"], p["lng"])), 2)})
     out = [p for p in candidates if p["distance_km"] <= radius_km]
     if len(out) < 3:  # rural stops: widen the circle rather than offer nothing
@@ -876,7 +906,7 @@ async def item_alternatives(trip_id: int, item_id: int, reason: str = "nearby", 
             "alternatives": await alternatives_for(item, reason, {i["name"] for i in items}, min(radius_km, 20))}
 
 
-def apply_ops(items: List[Dict], ops: List[Dict], mode: str) -> List[Dict]:
+def apply_ops(items: List[Dict], ops: List[Dict], mode: str, starts: Optional[Dict[str, str]] = None) -> List[Dict]:
     """Pure: returns a new item list with the operations applied and times recomputed."""
     items = [dict(i) for i in items]
     by_id = {i["id"]: i for i in items}
@@ -917,7 +947,30 @@ def apply_ops(items: List[Dict], ops: List[Dict], mode: str) -> List[Dict]:
             for pos, item_id in enumerate(op["order"], 1):
                 if item_id in by_id and by_id[item_id]["day"] == op["day"]:
                     by_id[item_id]["position"] = pos
-    return reflow(items, mode, delays)
+    return reflow(items, mode, delays, starts)
+
+
+class DayStartIn(BaseModel):
+    day: int = Field(..., ge=1, le=30)
+    time: str = Field(..., pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
+@router.post("/itinerary/{trip_id:int}/day-start")
+def set_day_start(trip_id: int, body: DayStartIn, user: Optional[User] = Depends(optional_user),
+                  db: Session = Depends(get_db)):
+    """Start a day earlier or later: every stop of that day is re-timed from the new start."""
+    trip = get_trip(db, trip_id, user, edit=True)
+    if body.day > trip_days(trip):
+        raise HTTPException(400, f"This trip has {trip_days(trip)} days")
+    if not "05:00" <= body.time <= "13:00":
+        raise HTTPException(400, "Pick a start time between 05:00 and 13:00")
+    prefs = loads(trip.preferences, {})
+    prefs["day_starts"] = {**(prefs.get("day_starts") or {}), str(body.day): body.time}
+    trip.preferences = json.dumps(prefs)
+    items = reflow(load_items(db, trip), prefs.get("mode", "driving"), starts=prefs["day_starts"])
+    save_items(db, trip, items)
+    db.commit()
+    return itinerary_out(db, trip)
 
 
 class RescheduleIn(BaseModel):
@@ -941,7 +994,7 @@ async def reschedule(trip_id: int, body: RescheduleIn, user: Optional[User] = De
     items = load_items(db, trip)
     mode = loads(trip.preferences, {}).get("mode", "driving")
     ops, notes = await build_ops(trip, items, body.reason, body.day, body.minutes)
-    preview = apply_ops(items, ops, mode) if ops else items
+    preview = apply_ops(items, ops, mode, day_starts(trip)) if ops else items
     return {"reason": body.reason, "ops": ops, "notes": notes, "version": trip.version,
             "preview": itinerary_out(db, trip, preview)}
 
@@ -971,7 +1024,7 @@ async def build_ops(trip: Trip, items: List[Dict], reason: str, day: Optional[in
     if reason == "delay":
         mins = minutes or 30
         ops = [{"op": "delay", "day": day, "minutes": mins}]
-        shifted = apply_ops(items, ops, loads(trip.preferences, {}).get("mode", "driving"))
+        shifted = apply_ops(items, ops, loads(trip.preferences, {}).get("mode", "driving"), day_starts(trip))
         overflow = [i for i in shifted if i["day"] == day and i.get("overflow") and i["status"] == "planned"]
         ops += [{"op": "skip", "item_id": i["id"]} for i in overflow]
         return ops, [f"Shift day {day} by {mins} min"] + [f"{i['name']} no longer fits; skip it" for i in overflow]
@@ -1002,7 +1055,7 @@ async def route_optimization(trip_id: int, day_index: int = 0, user: Optional[Us
     trip = get_trip(db, trip_id, user, edit=True)
     items = load_items(db, trip)
     ops, _ = await build_ops(trip, items, "optimize", day_index + 1)
-    items = apply_ops(items, ops, loads(trip.preferences, {}).get("mode", "driving"))
+    items = apply_ops(items, ops, loads(trip.preferences, {}).get("mode", "driving"), day_starts(trip))
     save_items(db, trip, items)
     db.commit()
     return itinerary_out(db, trip)
@@ -1015,7 +1068,7 @@ def apply(trip_id: int, body: ApplyIn, user: Optional[User] = Depends(optional_u
         raise HTTPException(409, "The itinerary changed since this proposal was made; please review it again")
     items = load_items(db, trip)
     ops = [o.model_dump(exclude_none=True) for o in body.ops]
-    items = apply_ops(items, ops, loads(trip.preferences, {}).get("mode", "driving"))
+    items = apply_ops(items, ops, loads(trip.preferences, {}).get("mode", "driving"), day_starts(trip))
     save_items(db, trip, items)
     db.commit()
     return itinerary_out(db, trip)
@@ -1103,7 +1156,7 @@ def fit_place(trip: Trip, items: List[Dict], place: Dict) -> Optional[Dict]:
     mode = loads(trip.preferences, {}).get("mode", "driving")
     best = None
     for day in range(today_idx, trip_days(trip) + 1):
-        trial = apply_ops(items, [{"op": "add", "day": day, "place": place}], mode)
+        trial = apply_ops(items, [{"op": "add", "day": day, "place": place}], mode, day_starts(trip))
         added = trial[-1]
         if any(i.get("overflow") and i["status"] == "planned" for i in trial if i["day"] == day):
             continue

@@ -14,7 +14,8 @@ from .geo import road_km, search_places
 from .models import (Group, GroupMember, GroupSuggestion, GroupVote, ItineraryItem, Photo, PointEvent, Trip,
                      UserBadge, WishlistItem)
 from .photos import photo_out
-from .planning import _trip_summary, apply_ops, fit_place, get_trip, itinerary_out, load_items, save_items, trip_days
+from .planning import (_trip_summary, apply_ops, day_starts, fit_place, get_trip, itinerary_out, load_items,
+                       save_items, trip_days)
 from .core import loads
 
 router = APIRouter(prefix="/api", tags=["social"])
@@ -213,7 +214,7 @@ def accept(group_id: int, suggestion_id: int, user: User = Depends(current_user)
     op = fit_place(trip, items, place)
     if not op:
         raise HTTPException(409, f"{s.name} does not fit in the remaining days")
-    save_items(db, trip, apply_ops(items, [op], loads(trip.preferences, {}).get("mode", "driving")))
+    save_items(db, trip, apply_ops(items, [op], loads(trip.preferences, {}).get("mode", "driving"), day_starts(trip)))
     s.status = "added"
     db.commit()
     return group_detail(group_id, user, db)

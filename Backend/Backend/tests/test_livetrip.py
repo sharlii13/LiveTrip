@@ -885,3 +885,38 @@ def test_small_towns_still_fill_every_day(make_user, monkeypatch):
     itin = make_trip(make_user(), days=3, destination="Ahilyanagar")
     per_day = [len(visits(itin, d["day"])) for d in itin["days"]]
     assert len(per_day) == 3 and all(n >= 1 for n in per_day), per_day
+
+
+def test_meals_fit_the_time_of_day_and_day_start_moves_the_day(make_user):
+    from livetrip.planning import fits_meal
+    assert not fits_meal({"name": "Sudamache Pohe", "types": ["restaurant"]}, "Dinner")
+    assert not fits_meal({"name": "Chitale Bandhu Mithaiwale Sweets", "types": []}, "Lunch")
+    assert not fits_meal({"name": "Brew Lab", "types": ["coffee_shop"]}, "Lunch")
+    assert fits_meal({"name": "Cafe Goodluck", "types": ["cafe", "restaurant"]}, "Dinner")
+    assert not fits_meal({"name": "Morning Thali", "types": ["restaurant"], "hours": ["Monday: 7:00 AM – 3:00 PM"]}, "Dinner")
+    assert fits_meal({"name": "Vaishali", "types": ["restaurant"], "hours": ["Monday: 7:00 AM – 11:00 PM"]}, "Dinner")
+
+    a = make_user()
+    itin = make_trip(a, days=2)
+    tid = itin["id"]
+    first_before = visits(itin, 1)[0]["start_time"]
+    r = a.post(f"/api/itinerary/{tid}/day-start", json={"day": 1, "time": "07:30"})
+    assert r.status_code == 200, r.text
+    after = r.json()
+    assert visits(after, 1)[0]["start_time"] == "07:30" and first_before == "09:00"
+    assert visits(after, 2)[0]["start_time"] == "09:00"  # other days unchanged
+    assert after["days"][0]["day_start"] == "07:30"
+    # later edits keep the chosen start
+    skip = a.post(f"/api/itinerary/{tid}/reschedule", json={"reason": "skip_next"}).json()
+    applied = a.post(f"/api/itinerary/{tid}/apply", json={"ops": skip["ops"], "expected_version": skip["version"]}).json()
+    assert [s for s in visits(applied, 1) if s["status"] != "skipped"][0]["start_time"] == "07:30"
+    assert a.post(f"/api/itinerary/{tid}/day-start", json={"day": 1, "time": "02:00"}).status_code == 400
+
+
+def test_dense_city_drops_a_stop_two_km_out():
+    from livetrip.planning import trim_outliers
+    near = [{"name": f"Peth {i}", "lat": 18.515 + i * 0.0015, "lng": 73.855} for i in range(5)]  # ~170 m apart
+    far = {"name": "Ohel David Synagogue", "lat": 18.519, "lng": 73.876}                       # ~2.2 km east
+    spare = {"name": "Kasba Ganpati", "lat": 18.519, "lng": 73.857}
+    kept = [p["name"] for p in trim_outliers(near + [far], [spare])]
+    assert "Ohel David Synagogue" not in kept and "Kasba Ganpati" in kept
