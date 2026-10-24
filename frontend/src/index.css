@@ -116,3 +116,26 @@ body { top: 0 !important; }
 .buddy-blink { animation: buddy-blink 4.5s infinite; }
 .buddy-pop { animation: buddy-pop 180ms ease-out; }
 @media (prefers-reduced-motion: reduce) { .buddy-bob, .buddy-blink, .buddy-pop { animation: none; } }
+
+/* opening animation (components/IntroAnimation.tsx), 3.7 s in total */
+@keyframes intro-plane {
+  0% { transform: translateY(70vh) scale(.8); }
+  55% { transform: translateY(-34vh) scale(1); }
+  100% { transform: translateY(-130vh) scale(1.1); }
+}
+@keyframes intro-word {
+  0% { transform: translateY(70vh); opacity: 0; }
+  12% { opacity: 1; }
+  45%, 55% { transform: translateY(-50%) scale(1); opacity: 1; }  /* the photo starts opening at ~53% */
+  68%, 100% { transform: translateY(-50%) scale(1.12); opacity: 0; }
+}
+@keyframes intro-reveal {
+  0%, 60% { clip-path: inset(50% 0 50% 0); }
+  92%, 100% { clip-path: inset(0 0 0 0); }
+}
+@keyframes intro-fade { 0%, 88% { opacity: 1; } 100% { opacity: 0; } }
+.intro-plane { animation: intro-plane 2.3s cubic-bezier(.33, .7, .45, 1) .1s both; }
+.intro-word { animation: intro-word 3.3s cubic-bezier(.25, .8, .35, 1) .3s both; }
+.intro-reveal { animation: intro-reveal 3.4s cubic-bezier(.7, 0, .3, 1) both; }
+.intro-root { animation: intro-fade 3.7s linear both; transition: opacity .35s; }
+.intro-root.intro-leave { opacity: 0 !important; animation: none; }

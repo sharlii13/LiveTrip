@@ -22,6 +22,7 @@ import About from "@/pages/about";
 import HealthPanel from "@/components/HealthPanel";
 import Navbar from "@/components/navbar";
 import AssistantBuddy from "@/components/AssistantBuddy";
+import IntroAnimation, { shouldPlayIntro } from "@/components/IntroAnimation";
 import PermissionRequests from "@/components/PermissionRequests";
 import DateSelection from "@/pages/trip-planning/DateSelection";
 import CompanySelection from "@/pages/trip-planning/CompanySelection";
@@ -47,7 +48,7 @@ function LatestItinerary() {
   return <Navigate to={id ? `/trips/${id}` : "/trips"} replace />;
 }
 
-function Router() {
+function Router({ ready }: { ready: boolean }) {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -90,22 +91,23 @@ function Router() {
         <Route path="/history" element={<ProtectedRoute><TravelHistory /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-      <AssistantBuddy />
+      {ready && <AssistantBuddy />}
     </div>
   );
 }
 
 function App() {
   const [showPermissions, setShowPermissions] = useState(false);
+  const [intro, setIntro] = useState(shouldPlayIntro);
 
   useEffect(() => {
-    // Ask once; the answer is remembered (handlePermissionsComplete sets the flag)
-    if (localStorage.getItem('liveTrip-permissions-requested')) return;
+    // Ask once, after the intro; the answer is remembered (handlePermissionsComplete sets the flag)
+    if (intro || localStorage.getItem('liveTrip-permissions-requested')) return;
     const timer = setTimeout(() => {
       setShowPermissions(true);
     }, 1000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [intro]);
 
   const handlePermissionsComplete = () => {
     setShowPermissions(false);
@@ -119,7 +121,8 @@ function App() {
           <TripPlanningProvider>
             <TooltipProvider>
               <Toaster />
-              <Router />
+              <Router ready={!intro} />
+              {intro && <IntroAnimation onDone={() => setIntro(false)} />}
               {showPermissions && (
                 <PermissionRequests onComplete={handlePermissionsComplete} />
               )}
