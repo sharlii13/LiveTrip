@@ -140,3 +140,9 @@ body { top: 0 !important; }
 .intro-skip { animation: intro-skip 3.4s linear both; }
 .intro-root { animation: intro-fade 3.7s linear both; transition: opacity .35s; }
 .intro-root.intro-leave { opacity: 0 !important; animation: none; }
+
+/* home page destination ticker (components/home/DestinationTicker.tsx) */
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.ticker-track { animation: ticker 45s linear infinite; }
+.ticker:hover .ticker-track, .ticker:focus-within .ticker-track { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }

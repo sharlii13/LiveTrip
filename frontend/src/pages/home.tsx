@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Bed, Utensils, Camera, Ticket, MapPin, Users, Star, TrendingUp, Globe, Heart, Share2, Bookmark, Target } from "lucide-react";
+import { Search, Bed, Utensils, Camera, Ticket, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import DestinationCard from "@/components/destination-card";
 import ReviewCard from "@/components/review-card";
 import LiveTripLogo from "@/components/LiveTripLogo";
 import InteractiveMap from "@/components/InteractiveMap";
 import { useTripPlanning } from "@/contexts/TripPlanningContext";
+import JourneyStory from "@/components/home/JourneyStory";
+import VideoCategoryCard from "@/components/home/VideoCategoryCard";
+import DestinationTicker from "@/components/home/DestinationTicker";
+import Reveal from "@/components/home/Reveal";
 import type { Destination, ReviewWithUser } from "@shared/schema";
 
 export default function Home() {
@@ -118,134 +121,42 @@ export default function Home() {
           </section>
 
 
-      {/* Tagline Section */}
-      <section className="py-12 bg-gradient-to-r from-blue-50 to-indigo-100">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <div className="flex justify-center mb-6">
-            <LiveTripLogo size="lg" />
-          </div>
-          <p className="text-2xl md:text-3xl font-semibold text-gray-800 tracking-wide">
+      {/* Tagline + destination ticker */}
+      <section className="relative py-12 bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500 overflow-hidden">
+        <Reveal className="max-w-4xl mx-auto px-4 text-center mb-6">
+          <p className="text-2xl md:text-3xl font-semibold text-white tracking-wide">
             ✈️ your trip, your mood, your way - all live 🌍
           </p>
-        </div>
+          <p className="text-white/80 mt-2">Tap a destination to start planning</p>
+        </Reveal>
+        <DestinationTicker onPick={(place) => { updateTripData({ destination: place }); navigate('/trip-planning'); }} />
       </section>
 
-      {/* Popular Categories */}
-      <section className="py-20 bg-gradient-to-br from-indigo-50 via-white to-purple-50 relative overflow-hidden">
-        {/* Background decorative elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-200 rounded-full opacity-20 animate-pulse"></div>
-          <div className="absolute top-1/2 -left-20 w-32 h-32 bg-purple-200 rounded-full opacity-20 animate-pulse delay-1000"></div>
-          <div className="absolute bottom-10 right-1/4 w-24 h-24 bg-pink-200 rounded-full opacity-20 animate-pulse delay-500"></div>
-        </div>
-        
+      {/* How it works: scroll story */}
+      <JourneyStory />
+
+      {/* Categories: video cards */}
+      <section className="py-20 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 relative z-10">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mb-6">
-              <Target className="w-8 h-8 text-white" />
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-6" data-testid="text-categories-title">
-              Explore by Category
+          <Reveal className="text-center mb-14">
+            <h2 className="text-4xl md:text-5xl font-black text-white mb-4" data-testid="text-categories-title">
+              Explore by <span className="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">category</span>
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Discover amazing places and experiences tailored to your interests. 
-              <span className="text-blue-600 font-semibold"> Start your journey today!</span>
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Hotels Category */}
-            <div className="group relative" data-testid="category-hotels">
-              <div className="bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-4 hover:scale-105 border border-gray-100 group-hover:border-blue-200">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-blue-600/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="relative z-10">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:shadow-lg group-hover:shadow-blue-200 transition-all duration-500 group-hover:scale-110">
-                    <Bed className="text-white text-3xl" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-blue-600 transition-colors duration-300">Hotels</h3>
-                  <p className="text-gray-600 mb-4 group-hover:text-blue-500 transition-colors duration-300">Find the perfect stay</p>
-                  <div className="flex items-center justify-center space-x-2 text-sm text-blue-500 font-semibold">
-                    <Star className="w-4 h-4 fill-current" />
-                    <span>12,000+ options</span>
-                  </div>
-                  <div className="mt-4 text-xs text-gray-400 group-hover:text-blue-400 transition-colors duration-300">
-                    From luxury resorts to cozy B&Bs
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Restaurants Category */}
-            <div className="group relative" data-testid="category-restaurants">
-              <div className="bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-4 hover:scale-105 border border-gray-100 group-hover:border-orange-200">
-                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-orange-600/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="relative z-10">
-                  <div className="w-20 h-20 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:shadow-lg group-hover:shadow-orange-200 transition-all duration-500 group-hover:scale-110">
-                    <Utensils className="text-white text-3xl" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-orange-600 transition-colors duration-300">Restaurants</h3>
-                  <p className="text-gray-600 mb-4 group-hover:text-orange-500 transition-colors duration-300">Discover local cuisine</p>
-                  <div className="flex items-center justify-center space-x-2 text-sm text-orange-500 font-semibold">
-                    <Heart className="w-4 h-4 fill-current" />
-                    <span>8,500+ places</span>
-                  </div>
-                  <div className="mt-4 text-xs text-gray-400 group-hover:text-orange-400 transition-colors duration-300">
-                    From street food to fine dining
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Attractions Category */}
-            <div className="group relative" data-testid="category-attractions">
-              <div className="bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-4 hover:scale-105 border border-gray-100 group-hover:border-green-200">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-green-600/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="relative z-10">
-                  <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:shadow-lg group-hover:shadow-green-200 transition-all duration-500 group-hover:scale-110">
-                    <Camera className="text-white text-3xl" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-green-600 transition-colors duration-300">Attractions</h3>
-                  <p className="text-gray-600 mb-4 group-hover:text-green-500 transition-colors duration-300">Must-see places</p>
-                  <div className="flex items-center justify-center space-x-2 text-sm text-green-500 font-semibold">
-                    <Globe className="w-4 h-4" />
-                    <span>15,000+ sites</span>
-                  </div>
-                  <div className="mt-4 text-xs text-gray-400 group-hover:text-green-400 transition-colors duration-300">
-                    Iconic landmarks and hidden gems
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Experiences Category */}
-            <div className="group relative" data-testid="category-experiences">
-              <div className="bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-4 hover:scale-105 border border-gray-100 group-hover:border-purple-200">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-purple-600/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="relative z-10">
-                  <div className="w-20 h-20 bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:shadow-lg group-hover:shadow-purple-200 transition-all duration-500 group-hover:scale-110">
-                    <Ticket className="text-white text-3xl" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-purple-600 transition-colors duration-300">Experiences</h3>
-                  <p className="text-gray-600 mb-4 group-hover:text-purple-500 transition-colors duration-300">Book unique activities</p>
-                  <div className="flex items-center justify-center space-x-2 text-sm text-purple-500 font-semibold">
-                    <TrendingUp className="w-4 h-4" />
-                    <span>3,200+ activities</span>
-                  </div>
-                  <div className="mt-4 text-xs text-gray-400 group-hover:text-purple-400 transition-colors duration-300">
-                    Adventure, culture, and local experiences
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Call to Action */}
-          <div className="text-center mt-16">
-            <div className="inline-flex items-center space-x-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 cursor-pointer">
-              <Search className="w-5 h-5" />
-              <span className="font-semibold">Explore All Categories</span>
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-            </div>
+            <p className="text-lg text-white/70 max-w-2xl mx-auto">Hover a card to take a peek.</p>
+          </Reveal>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <VideoCategoryCard to="/search" clip="stays" title="Stays" subtitle="Houseboats to hill-top hotels" count={12000}
+                               unit="options" note="From luxury resorts to cozy homestays" accent="from-sky-500 to-blue-600"
+                               icon={<Bed className="w-6 h-6 text-white" />} />
+            <VideoCategoryCard to="/search" clip="food" title="Food" subtitle="Eat like a local" count={8500} unit="places"
+                               note="From street food to sunset dinners" accent="from-orange-400 to-rose-500"
+                               icon={<Utensils className="w-6 h-6 text-white" />} delay={0.1} />
+            <VideoCategoryCard to="/map" clip="sights" title="Sights" subtitle="Must-see places" count={15000} unit="sites"
+                               note="Iconic landmarks and hidden gems" accent="from-emerald-400 to-teal-600"
+                               icon={<Camera className="w-6 h-6 text-white" />} delay={0.2} />
+            <VideoCategoryCard to="/search" clip="experiences" title="Experiences" subtitle="Treks, cruises and more" count={3200}
+                               unit="activities" note="Adventure, culture and local experiences" accent="from-violet-500 to-fuchsia-500"
+                               icon={<Ticket className="w-6 h-6 text-white" />} delay={0.3} />
           </div>
         </div>
       </section>
@@ -253,7 +164,7 @@ export default function Home() {
           {/* Interactive Map Section */}
       <section className="py-16 bg-gradient-to-br from-gray-50 to-blue-50">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-12">
+          <Reveal className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4" data-testid="text-map-title">
               🌍 Explore the World
             </h2>
@@ -266,14 +177,14 @@ export default function Home() {
                 Open Interactive Map
               </Button>
             </Link>
-          </div>
+          </Reveal>
           
-          <div className="max-w-4xl mx-auto">
+          <Reveal className="max-w-4xl mx-auto" delay={0.1}>
             <InteractiveMap 
               destinations={destinations}
               className="h-96 rounded-lg shadow-xl"
             />
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -306,8 +217,10 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {destinations?.map((destination) => (
-                <DestinationCard key={destination.id} destination={destination} />
+              {destinations?.map((destination, i) => (
+                <Reveal key={destination.id} delay={i * 0.12}>
+                  <DestinationCard destination={destination} />
+                </Reveal>
               ))}
             </div>
           )}
@@ -322,8 +235,10 @@ export default function Home() {
           </h2>
           {recentReviews && recentReviews.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {recentReviews.map((review) => (
-                <ReviewCard key={review.id} review={review} />
+              {recentReviews.map((review, i) => (
+                <Reveal key={review.id} delay={i * 0.12}>
+                  <ReviewCard review={review} />
+                </Reveal>
               ))}
             </div>
           ) : (
