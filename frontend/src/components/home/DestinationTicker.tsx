@@ -10,7 +10,7 @@ export default function DestinationTicker({ onPick }: { onPick: (place: string) 
       {PLACES.map((p) => (
         <button key={p} type="button" tabIndex={hidden ? -1 : 0} onClick={() => onPick(p)} translate="no"
                 className="group flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-5 py-2 text-white font-semibold
-                           backdrop-blur hover:bg-white hover:text-blue-700 transition-colors whitespace-nowrap">
+                           backdrop-blur hover:bg-white hover:text-brand-700 transition-colors whitespace-nowrap">
           <Plane className="w-4 h-4 group-hover:translate-x-1 transition-transform" />{p}
         </button>
       ))}

@@ -116,7 +116,7 @@ export default function Trips() {
                     </div>
                     <div>
                       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500 transition-all duration-700"
+                        <div className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-500 transition-all duration-700"
                              style={{ width: `${t.visits ? (100 * t.completed) / t.visits : 0}%` }} />
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">{t.completed}/{t.visits} visited{t.owned ? "" : " · shared"}</p>

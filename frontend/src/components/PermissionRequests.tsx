@@ -131,10 +131,10 @@ export default function PermissionRequests({ onComplete }: PermissionRequestsPro
           
           <div className="flex justify-center mb-4">
             <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-              currentStepData.color === 'blue' ? 'bg-blue-100' : 'bg-green-100'
+              currentStepData.color === 'blue' ? 'bg-brand-100' : 'bg-brand-100'
             }`}>
               <currentStepData.icon className={`w-8 h-8 ${
-                currentStepData.color === 'blue' ? 'text-blue-600' : 'text-green-600'
+                currentStepData.color === 'blue' ? 'text-brand-700' : 'text-brand-700'
               }`} />
             </div>
           </div>
@@ -154,7 +154,7 @@ export default function PermissionRequests({ onComplete }: PermissionRequestsPro
               <div
                 key={index}
                 className={`w-2 h-2 rounded-full ${
-                  index <= currentStep ? 'bg-blue-600' : 'bg-gray-300'
+                  index <= currentStep ? 'bg-brand-700' : 'bg-gray-300'
                 }`}
               />
             ))}
@@ -164,8 +164,8 @@ export default function PermissionRequests({ onComplete }: PermissionRequestsPro
           {(currentStepData.id === 'location' && locationGranted) || 
            (currentStepData.id === 'notifications' && notificationGranted) ? (
             <div className="text-center py-4">
-              <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-2" />
-              <p className="text-green-600 font-medium">
+              <CheckCircle className="w-12 h-12 text-brand-700 mx-auto mb-2" />
+              <p className="text-brand-700 font-medium">
                 {currentStepData.title} Enabled!
               </p>
             </div>
@@ -175,8 +175,8 @@ export default function PermissionRequests({ onComplete }: PermissionRequestsPro
                 onClick={handlePermissionRequest}
                 className={`flex-1 ${
                   currentStepData.color === 'blue' 
-                    ? 'bg-blue-600 hover:bg-blue-700' 
-                    : 'bg-green-600 hover:bg-green-700'
+                    ? 'bg-brand-700 hover:bg-brand-800' 
+                    : 'bg-brand-700 hover:bg-brand-800'
                 }`}
               >
                 {currentStepData.action}

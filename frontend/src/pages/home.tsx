@@ -74,9 +74,9 @@ export default function Home() {
 
               {/* Floating Elements */}
               <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute top-20 left-10 w-16 h-16 bg-blue-500/20 rounded-full animate-bounce" style={{ animationDelay: '0s', animationDuration: '3s' }}></div>
+                <div className="absolute top-20 left-10 w-16 h-16 bg-brand-500/20 rounded-full animate-bounce" style={{ animationDelay: '0s', animationDuration: '3s' }}></div>
                 <div className="absolute top-40 right-20 w-12 h-12 bg-white/20 rounded-full animate-bounce" style={{ animationDelay: '1s', animationDuration: '4s' }}></div>
-                <div className="absolute bottom-40 left-20 w-20 h-20 bg-blue-400/20 rounded-full animate-bounce" style={{ animationDelay: '2s', animationDuration: '3.5s' }}></div>
+                <div className="absolute bottom-40 left-20 w-20 h-20 bg-brand-400/20 rounded-full animate-bounce" style={{ animationDelay: '2s', animationDuration: '3.5s' }}></div>
                 <div className="absolute bottom-20 right-10 w-14 h-14 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '0.5s', animationDuration: '4.5s' }}></div>
               </div>
 
@@ -107,7 +107,7 @@ export default function Home() {
                         </div>
                         <Button 
                           onClick={handleSearch}
-                          className="bg-blue-600 text-white px-6 py-3 rounded-full font-medium hover:bg-blue-700 transition-all duration-300 hover:scale-105" 
+                          className="bg-brand-700 text-white px-6 py-3 rounded-full font-medium hover:bg-brand-800 transition-all duration-300 hover:scale-105" 
                           data-testid="button-search-hero"
                         >
                           Search
@@ -121,7 +121,7 @@ export default function Home() {
 
 
       {/* Tagline + destination ticker */}
-      <section className="relative py-12 bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500 overflow-hidden">
+      <section className="relative py-12 bg-gradient-to-r from-brand-600 via-brand-600 to-brand-500 overflow-hidden">
         <Reveal className="max-w-4xl mx-auto px-4 text-center mb-6">
           <p className="text-2xl md:text-3xl font-semibold text-white tracking-wide">
             ✈️ your trip, your mood, your way - all live 🌍
@@ -135,26 +135,26 @@ export default function Home() {
       <JourneyStory />
 
       {/* Categories: video cards */}
-      <section className="py-20 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 relative overflow-hidden">
+      <section className="py-20 bg-gradient-to-br from-slate-950 via-slate-900 to-brand-950 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 relative z-10">
           <Reveal className="text-center mb-14">
             <h2 className="text-4xl md:text-5xl font-black text-white mb-4" data-testid="text-categories-title">
-              Explore by <span className="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">category</span>
+              Explore by <span className="bg-gradient-to-r from-brand-400 to-brand-400 bg-clip-text text-transparent">category</span>
             </h2>
             <p className="text-lg text-white/70 max-w-2xl mx-auto">Hover a card to take a peek.</p>
           </Reveal>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <VideoCategoryCard to="/search" clip="stays" title="Stays" subtitle="Houseboats to hill-top hotels" count={12000}
-                               unit="options" note="From luxury resorts to cozy homestays" accent="from-sky-500 to-blue-600"
+                               unit="options" note="From luxury resorts to cozy homestays" accent="from-brand-500 to-brand-600"
                                icon={<Bed className="w-6 h-6 text-white" />} />
             <VideoCategoryCard to="/search" clip="food" title="Food" subtitle="Eat like a local" count={8500} unit="places"
                                note="From street food to sunset dinners" accent="from-orange-400 to-rose-500"
                                icon={<Utensils className="w-6 h-6 text-white" />} delay={0.1} />
             <VideoCategoryCard to="/map" clip="sights" title="Sights" subtitle="Must-see places" count={15000} unit="sites"
-                               note="Iconic landmarks and hidden gems" accent="from-emerald-400 to-teal-600"
+                               note="Iconic landmarks and hidden gems" accent="from-brand-400 to-brand-600"
                                icon={<Camera className="w-6 h-6 text-white" />} delay={0.2} />
             <VideoCategoryCard to="/search" clip="experiences" title="Experiences" subtitle="Treks, cruises and more" count={3200}
-                               unit="activities" note="Adventure, culture and local experiences" accent="from-violet-500 to-fuchsia-500"
+                               unit="activities" note="Adventure, culture and local experiences" accent="from-brand-500 to-brand-500"
                                icon={<Ticket className="w-6 h-6 text-white" />} delay={0.3} />
           </div>
         </div>

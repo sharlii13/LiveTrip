@@ -52,9 +52,9 @@ export const ItineraryCard = memo(function ItineraryCard(props: ItineraryItemPro
         <CardContent className="p-5 flex items-start gap-5">
           {/* Time column */}
           <div className="flex flex-col items-center shrink-0 w-28">
-            <div className="text-sm font-semibold text-blue-700 whitespace-nowrap">{startTime || ""}</div>
+            <div className="text-sm font-semibold text-brand-700 whitespace-nowrap">{startTime || ""}</div>
             <div className="text-[10px] text-muted-foreground my-0.5">to</div>
-            <div className="text-sm font-semibold text-blue-700 whitespace-nowrap">{endTime || ""}</div>
+            <div className="text-sm font-semibold text-brand-700 whitespace-nowrap">{endTime || ""}</div>
           </div>
 
           {/* Content */}
@@ -63,7 +63,7 @@ export const ItineraryCard = memo(function ItineraryCard(props: ItineraryItemPro
               <div className="text-lg" aria-hidden>{tagEmoji(categoryTag)}</div>
               <div className="font-semibold truncate" title={name}>{name}</div>
               <span className="ml-auto" />
-              <Badge className="capitalize bg-emerald-100 text-emerald-800 hover:bg-emerald-100">{categoryTag}</Badge>
+              <Badge className="capitalize bg-brand-100 text-brand-800 hover:bg-brand-100">{categoryTag}</Badge>
             </div>
             <div className="text-xs text-muted-foreground mt-1">{durationText}</div>
 

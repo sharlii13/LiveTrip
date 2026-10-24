@@ -55,7 +55,7 @@ function Chapter({ index, progress, active }: { index: number; progress: MotionV
       {/* outer box places the text; the inner one moves (framer's transform would undo a CSS centring) */}
       <div className="absolute inset-y-0 left-6 sm:left-16 right-14 flex items-end sm:items-center pb-24 sm:pb-0">
         <motion.div className="max-w-xl text-white" style={{ y: textY, opacity: textOpacity }}>
-          <p className="uppercase tracking-[0.3em] text-sm text-emerald-300 mb-3">{c.kicker}</p>
+          <p className="uppercase tracking-[0.3em] text-sm text-brand-300 mb-3">{c.kicker}</p>
           <h3 className="text-4xl sm:text-6xl font-black leading-[1.05] mb-4">{c.title}</h3>
           <p className="text-lg sm:text-xl text-white/85 mb-6">{c.body}</p>
           <Link to={c.cta.to}
@@ -87,7 +87,7 @@ function FlightPath({ progress }: { progress: MotionValue<number> }) {
   return (
     <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <path d={ROUTE} fill="none" stroke="white" strokeOpacity=".25" strokeWidth="2" strokeDasharray="2 10" strokeLinecap="round" />
-      <motion.path ref={path} d={ROUTE} fill="none" stroke="#6ee7b7" strokeWidth="3" strokeLinecap="round" style={{ pathLength: drawn }} />
+      <motion.path ref={path} d={ROUTE} fill="none" stroke="#67e8f9" strokeWidth="3" strokeLinecap="round" style={{ pathLength: drawn }} />
       {PIN_AT.map((t, i) => <Pin key={i} at={t} label={CHAPTERS[i].pin} shown={i < reached} />)}
       <g ref={plane}>
         <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"
@@ -110,7 +110,7 @@ function Pin({ at, label, shown }: { at: number; label: string; shown: boolean }
     <motion.g initial={false} animate={{ opacity: shown ? 1 : 0, y: shown ? 0 : -30 }}
               transition={{ type: "spring", stiffness: 300, damping: 18 }}>
       <g transform={`translate(${pt.x} ${pt.y})`}>
-        <path d="M0 0 C -9 -14 -12 -20 -12 -26 A 12 12 0 1 1 12 -26 C 12 -20 9 -14 0 0 Z" fill="#10b981" stroke="white" strokeWidth="2" />
+        <path d="M0 0 C -9 -14 -12 -20 -12 -26 A 12 12 0 1 1 12 -26 C 12 -20 9 -14 0 0 Z" fill="#0891b2" stroke="white" strokeWidth="2" />
         <circle cy="-26" r="4.5" fill="white" />
         <text y="-46" textAnchor="middle" fill="white" fontSize="16" fontWeight="700">{label}</text>
       </g>
@@ -140,7 +140,7 @@ export default function JourneyStory() {
             <img src={`/videos/clips/${c.clip}.jpg`} alt="" className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/75 to-transparent" />
             <div className="relative h-full flex flex-col justify-center px-6 sm:px-16 max-w-2xl text-white">
-              <p className="uppercase tracking-[0.3em] text-sm text-emerald-300 mb-3">{c.kicker}</p>
+              <p className="uppercase tracking-[0.3em] text-sm text-brand-300 mb-3">{c.kicker}</p>
               <h3 className="text-4xl sm:text-5xl font-black mb-4">{c.title}</h3>
               <p className="text-lg text-white/85 mb-6">{c.body}</p>
               <Link to={c.cta.to} className="self-start rounded-full bg-white text-slate-900 px-5 py-2.5 font-semibold">{c.cta.label}</Link>
@@ -159,10 +159,10 @@ export default function JourneyStory() {
         <nav className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 flex flex-col gap-3" aria-label="Chapters">
           {CHAPTERS.map((c, i) => (
             <button key={c.clip} type="button" onClick={() => goTo(i)} aria-label={c.kicker} aria-current={active === i}
-                    className={`h-3 rounded-full transition-all ${active === i ? "w-8 bg-emerald-400" : "w-3 bg-white/50 hover:bg-white"}`} />
+                    className={`h-3 rounded-full transition-all ${active === i ? "w-8 bg-brand-400" : "w-3 bg-white/50 hover:bg-white"}`} />
           ))}
         </nav>
-        <motion.div className="absolute left-0 bottom-0 h-1 bg-emerald-400 origin-left w-full" style={{ scaleX: scrollYProgress }} />
+        <motion.div className="absolute left-0 bottom-0 h-1 bg-brand-400 origin-left w-full" style={{ scaleX: scrollYProgress }} />
       </div>
     </section>
   );

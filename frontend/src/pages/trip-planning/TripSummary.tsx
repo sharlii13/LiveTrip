@@ -35,15 +35,15 @@ const TripSummary: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-100">
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Card className="w-full">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center mb-4">
-              <CheckCircle className="w-12 h-12 text-blue-600 mr-3" />
+              <CheckCircle className="w-12 h-12 text-brand-700 mr-3" />
               <LiveTripLogo size="lg" />
             </div>
-            <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
+            <CardTitle className="text-3xl font-bold text-brand-800 mb-2">
               Trip Plan Created Successfully!
             </CardTitle>
             <CardDescription className="text-lg text-gray-600">
@@ -53,12 +53,12 @@ const TripSummary: React.FC = () => {
           
           <CardContent className="space-y-8">
             {/* Trip Overview */}
-            <div className="bg-gradient-to-r from-blue-50 to-blue-50 p-6 rounded-lg">
+            <div className="bg-gradient-to-r from-brand-50 to-brand-50 p-6 rounded-lg">
               <h3 className="text-xl font-semibold text-gray-800 mb-4">Trip Overview</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
-                    <MapPin className="w-5 h-5 text-blue-600" />
+                    <MapPin className="w-5 h-5 text-brand-700" />
                     <div>
                       <span className="text-sm text-gray-600">Destination</span>
                       <p className="font-semibold text-gray-800">{tripData.destination}</p>
@@ -66,7 +66,7 @@ const TripSummary: React.FC = () => {
                   </div>
                   
                   <div className="flex items-center space-x-3">
-                    <Calendar className="w-5 h-5 text-blue-600" />
+                    <Calendar className="w-5 h-5 text-brand-700" />
                     <div>
                       <span className="text-sm text-gray-600">Duration</span>
                       <p className="font-semibold text-gray-800">
@@ -78,7 +78,7 @@ const TripSummary: React.FC = () => {
                 
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
-                    <Users className="w-5 h-5 text-blue-600" />
+                    <Users className="w-5 h-5 text-brand-700" />
                     <div>
                       <span className="text-sm text-gray-600">Travel Type</span>
                       <p className="font-semibold text-gray-800">
@@ -88,7 +88,7 @@ const TripSummary: React.FC = () => {
                   </div>
                   
                   <div className="flex items-center space-x-3">
-                    <Utensils className="w-5 h-5 text-blue-600" />
+                    <Utensils className="w-5 h-5 text-brand-700" />
                     <div>
                       <span className="text-sm text-gray-600">Food Preference</span>
                       <p className="font-semibold text-gray-800">
@@ -133,7 +133,7 @@ const TripSummary: React.FC = () => {
                 <CardContent className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Eco Mode:</span>
-                    <Badge variant={tripData.ecoMode ? "default" : "outline"} className={tripData.ecoMode ? "bg-blue-600" : ""}>
+                    <Badge variant={tripData.ecoMode ? "default" : "outline"} className={tripData.ecoMode ? "bg-brand-700" : ""}>
                       {tripData.ecoMode ? 'Enabled' : 'Disabled'}
                     </Badge>
                   </div>
@@ -170,9 +170,9 @@ const TripSummary: React.FC = () => {
 
             {/* Language Preferences */}
             {tripData.languages && tripData.languages.length > 0 && (
-              <Card className="border-green-200 bg-green-50">
+              <Card className="border-brand-200 bg-brand-50">
                 <CardHeader>
-                  <CardTitle className="text-lg text-green-800 flex items-center">
+                  <CardTitle className="text-lg text-brand-800 flex items-center">
                     <Globe className="w-5 h-5 mr-2" />
                     Language Preferences
                   </CardTitle>
@@ -180,7 +180,7 @@ const TripSummary: React.FC = () => {
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {tripData.languages.map((langCode) => (
-                      <Badge key={langCode} variant="secondary" className="bg-green-100 text-green-800" translate="no">
+                      <Badge key={langCode} variant="secondary" className="bg-brand-100 text-brand-800" translate="no">
                         {languageName(langCode)}
                       </Badge>
                     ))}
@@ -191,15 +191,15 @@ const TripSummary: React.FC = () => {
 
             {/* Eco Mode Benefits */}
             {tripData.ecoMode && (
-              <Card className="border-blue-200 bg-blue-50">
+              <Card className="border-brand-200 bg-brand-50">
                 <CardHeader>
-                  <CardTitle className="text-lg text-blue-800 flex items-center">
+                  <CardTitle className="text-lg text-brand-800 flex items-center">
                     <Leaf className="w-5 h-5 mr-2" />
                     Eco-Friendly Features
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="text-sm text-blue-700 space-y-1">
+                  <ul className="text-sm text-brand-700 space-y-1">
                     <li>• Sustainable accommodation recommendations</li>
                     <li>• Eco-friendly restaurant suggestions</li>
                     <li>• Carbon footprint tracking</li>
@@ -214,14 +214,14 @@ const TripSummary: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4 pt-6">
               <Button 
                 onClick={handleViewItinerary}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3"
+                className="flex-1 bg-gradient-to-r from-brand-600 to-brand-600 hover:from-brand-700 hover:to-brand-700 text-white font-semibold py-3"
               >
                 📅 View Detailed Itinerary
               </Button>
               
               <Button 
                 onClick={handleViewRecommendations}
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                className="flex-1 bg-brand-700 hover:bg-brand-800"
               >
                 View Recommendations
               </Button>

@@ -19,8 +19,8 @@ const CompanySelection: React.FC = () => {
       title: 'Solo Trip',
       icon: User,
       description: 'Traveling alone',
-      color: 'bg-blue-50 border-blue-200 text-blue-800',
-      selectedColor: 'bg-blue-600 border-blue-600 text-white',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
+      selectedColor: 'bg-brand-700 border-brand-600 text-white',
     },
     {
       id: 'partner',
@@ -35,16 +35,16 @@ const CompanySelection: React.FC = () => {
       title: 'Friends Trip',
       icon: Users,
       description: 'Traveling with friends',
-      color: 'bg-blue-50 border-blue-200 text-blue-800',
-      selectedColor: 'bg-blue-600 border-blue-600 text-white',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
+      selectedColor: 'bg-brand-700 border-brand-600 text-white',
     },
     {
       id: 'family',
       title: 'Family Trip',
       icon: Home,
       description: 'Traveling with family',
-      color: 'bg-purple-50 border-purple-200 text-purple-800',
-      selectedColor: 'bg-purple-600 border-purple-600 text-white',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
+      selectedColor: 'bg-brand-700 border-brand-600 text-white',
     },
   ];
 
@@ -71,7 +71,7 @@ const CompanySelection: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-100">
       <ProgressIndicator 
         currentStep={currentStep} 
         totalSteps={totalSteps} 
@@ -81,7 +81,7 @@ const CompanySelection: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Card className="w-full">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
+            <CardTitle className="text-3xl font-bold text-brand-800 mb-2">
               What kind of trip are you planning?
             </CardTitle>
             <CardDescription className="text-lg text-gray-600">
@@ -138,7 +138,7 @@ const CompanySelection: React.FC = () => {
                   onClick={() => handlePetToggle(true)}
                   className={`flex items-center space-x-2 ${
                     withPets === true 
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                      ? 'bg-brand-700 hover:bg-brand-800 text-white' 
                       : 'border-gray-300 text-gray-700'
                   }`}
                 >
@@ -152,7 +152,7 @@ const CompanySelection: React.FC = () => {
                   onClick={() => handlePetToggle(false)}
                   className={`flex items-center space-x-2 ${
                     withPets === false 
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                      ? 'bg-brand-700 hover:bg-brand-800 text-white' 
                       : 'border-gray-300 text-gray-700'
                   }`}
                 >
@@ -168,7 +168,7 @@ const CompanySelection: React.FC = () => {
               <div className="space-y-1 text-sm text-gray-600">
                 <div className="flex justify-between">
                   <span>Destination:</span>
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                  <Badge variant="secondary" className="bg-brand-100 text-brand-800">
                     {tripData.destination}
                   </Badge>
                 </div>
@@ -204,7 +204,7 @@ const CompanySelection: React.FC = () => {
               <Button 
                 onClick={handleNext}
                 disabled={!selectedCompany || withPets === null}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-brand-700 hover:bg-brand-800"
               >
                 Next
               </Button>

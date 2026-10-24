@@ -110,8 +110,8 @@ export default function SearchPage() {
       title: 'Solo Trip',
       icon: User,
       description: 'Traveling alone',
-      color: 'bg-blue-50 border-blue-200 text-blue-800',
-      selectedColor: 'bg-blue-600 border-blue-600 text-white',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
+      selectedColor: 'bg-brand-700 border-brand-600 text-white',
     },
     {
       id: 'partner',
@@ -126,16 +126,16 @@ export default function SearchPage() {
       title: 'Friends Trip',
       icon: Users,
       description: 'Traveling with friends',
-      color: 'bg-green-50 border-green-200 text-green-800',
-      selectedColor: 'bg-green-600 border-green-600 text-white',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
+      selectedColor: 'bg-brand-700 border-brand-600 text-white',
     },
     {
       id: 'family',
       title: 'Family Trip',
       icon: Home,
       description: 'Traveling with family',
-      color: 'bg-purple-50 border-purple-200 text-purple-800',
-      selectedColor: 'bg-purple-600 border-purple-600 text-white',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
+      selectedColor: 'bg-brand-700 border-brand-600 text-white',
     },
   ];
 
@@ -145,8 +145,8 @@ export default function SearchPage() {
       title: 'Vegetarian',
       icon: Leaf,
       description: 'Plant-based meals only',
-      color: 'bg-green-50 border-green-200 text-green-800',
-      selectedColor: 'bg-green-600 border-green-600 text-white',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
+      selectedColor: 'bg-brand-700 border-brand-600 text-white',
     },
     {
       id: 'non-vegetarian',
@@ -161,8 +161,8 @@ export default function SearchPage() {
       title: 'Both',
       icon: Utensils,
       description: 'Flexible with all food types',
-      color: 'bg-blue-50 border-blue-200 text-blue-800',
-      selectedColor: 'bg-blue-600 border-blue-600 text-white',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
+      selectedColor: 'bg-brand-700 border-brand-600 text-white',
     },
   ];
 
@@ -260,7 +260,7 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-100">
     <PlanningOverlay open={submitting} destination={selectedDestination ?? undefined} />
     <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Search Header with Video */}
@@ -285,11 +285,11 @@ export default function SearchPage() {
           </div>
         <div className="flex flex-col md:flex-row gap-4 items-center">
           <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-600 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-700 w-4 h-4" />
             <Input 
               type="text" 
               placeholder="Where do you want to go?" 
-                className="pl-10 pr-4 py-3 border-blue-300 focus:border-blue-500 focus:ring-blue-500"
+                className="pl-10 pr-4 py-3 border-brand-300 focus:border-brand-500 focus:ring-brand-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -298,7 +298,7 @@ export default function SearchPage() {
           </div>
           <Button 
             onClick={handleSearch}
-              className="bg-blue-600 text-white hover:bg-blue-700"
+              className="bg-brand-700 text-white hover:bg-brand-800"
             data-testid="button-search"
           >
             Search
@@ -421,13 +421,13 @@ export default function SearchPage() {
                     <span className="text-sm text-gray-600">Step {tripStep} of 7</span>
                       <div className="w-32 bg-gray-200 rounded-full h-2">
                         <div 
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          className="bg-brand-700 h-2 rounded-full transition-all duration-300"
                           style={{ width: `${(tripStep / 7) * 100}%` }}
                         ></div>
                       </div>
                   </div>
                 </div>
-                <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
+                <CardTitle className="text-3xl font-bold text-brand-800 mb-2">
                   {tripStep === 1 && "When are you going?"}
                   {tripStep === 2 && "What kind of trip are you planning?"}
                   {tripStep === 3 && "What are your food preferences?"}
@@ -454,7 +454,7 @@ export default function SearchPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold text-blue-800">Select Dates</h3>
+                          <h3 className="text-lg font-semibold text-brand-800">Select Dates</h3>
                         </div>
                         <CalendarComponent
                           mode="range"
@@ -472,11 +472,11 @@ export default function SearchPage() {
                         />
                       </div>
                       <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-blue-800">Trip Summary</h3>
+                        <h3 className="text-lg font-semibold text-brand-800">Trip Summary</h3>
                         <div className="space-y-3">
                           <div className="flex justify-between">
                             <span className="text-gray-600">Destination:</span>
-                            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                            <Badge variant="secondary" className="bg-brand-100 text-brand-800">
                               {selectedDestination}
                             </Badge>
                           </div>
@@ -499,7 +499,7 @@ export default function SearchPage() {
                           {getDuration() > 0 && (
                             <div className="flex justify-between">
                               <span className="text-gray-600">Duration:</span>
-                              <Badge variant="outline" className="bg-blue-50 text-blue-800">
+                              <Badge variant="outline" className="bg-brand-50 text-brand-800">
                                 {getDuration()} day{getDuration() > 1 ? 's' : ''}
                               </Badge>
                             </div>
@@ -556,7 +556,7 @@ export default function SearchPage() {
                           onClick={() => setWithPets(true)}
                           className={`flex items-center space-x-2 ${
                             withPets === true 
-                              ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                              ? 'bg-brand-700 hover:bg-brand-800 text-white' 
                               : 'border-gray-300 text-gray-700'
                           }`}
                         >
@@ -570,7 +570,7 @@ export default function SearchPage() {
                           onClick={() => setWithPets(false)}
                           className={`flex items-center space-x-2 ${
                             withPets === false 
-                              ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                              ? 'bg-brand-700 hover:bg-brand-800 text-white' 
                               : 'border-gray-300 text-gray-700'
                           }`}
                         >
@@ -618,13 +618,13 @@ export default function SearchPage() {
                 {/* Step 4: Eco-friendly Options */}
                 {tripStep === 4 && (
                   <div className="space-y-8">
-                    <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                    <div className="bg-brand-50 p-6 rounded-lg border border-brand-200">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          <Leaf className="w-6 h-6 text-blue-600" />
+                          <Leaf className="w-6 h-6 text-brand-700" />
                           <div>
-                            <h3 className="text-lg font-semibold text-blue-800">Eco Mode</h3>
-                            <p className="text-sm text-blue-700">
+                            <h3 className="text-lg font-semibold text-brand-800">Eco Mode</h3>
+                            <p className="text-sm text-brand-700">
                               Enable eco-friendly recommendations and sustainable travel options
                             </p>
                           </div>
@@ -632,7 +632,7 @@ export default function SearchPage() {
                         <Switch
                           checked={ecoMode}
                           onCheckedChange={setEcoMode}
-                          className="data-[state=checked]:bg-blue-600"
+                          className="data-[state=checked]:bg-brand-700"
                         />
                       </div>
                     </div>
@@ -656,19 +656,19 @@ export default function SearchPage() {
                                 onClick={() => setSelectedTransport(option.id)}
                                 className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${
                                   isSelected 
-                                    ? 'border-blue-500 bg-blue-50' 
+                                    ? 'border-brand-500 bg-brand-50' 
                                     : 'border-gray-200 bg-white hover:shadow-sm'
                                 }`}
                               >
                                 <div className="text-center">
                                   <div className="text-2xl mb-2">{option.icon}</div>
-                                  <h4 className={`font-medium text-sm ${isSelected ? 'text-blue-800' : 'text-gray-800'}`}>
+                                  <h4 className={`font-medium text-sm ${isSelected ? 'text-brand-800' : 'text-gray-800'}`}>
                                     {option.title}
                                   </h4>
-                                  <p className={`text-xs ${isSelected ? 'text-blue-600' : 'text-gray-600'}`}>
+                                  <p className={`text-xs ${isSelected ? 'text-brand-700' : 'text-gray-600'}`}>
                                     Eco Score: {option.ecoScore}/10
                                   </p>
-                                  {isSelected && <Check className="w-4 h-4 text-blue-600 mx-auto mt-2" />}
+                                  {isSelected && <Check className="w-4 h-4 text-brand-700 mx-auto mt-2" />}
                                 </div>
                               </div>
                             );
@@ -738,12 +738,12 @@ export default function SearchPage() {
                 {/* Step 6: Language Preferences */}
                 {tripStep === 6 && (
                   <div className="space-y-6">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                    <div className="bg-brand-50 border border-brand-200 rounded-lg p-6">
                       <div className="flex items-center mb-4">
-                        <Globe className="w-6 h-6 text-green-600 mr-2" />
-                        <h3 className="text-lg font-semibold text-green-800">Language Preferences</h3>
+                        <Globe className="w-6 h-6 text-brand-700 mr-2" />
+                        <h3 className="text-lg font-semibold text-brand-800">Language Preferences</h3>
                       </div>
-                      <p className="text-green-700 mb-4">
+                      <p className="text-brand-700 mb-4">
                         Select the languages you're comfortable with for better recommendations
                       </p>
                       <LanguageChecklist selected={selectedLanguages} onChange={setSelectedLanguages} />
@@ -754,18 +754,18 @@ export default function SearchPage() {
                 {/* Step 7: Trip Summary */}
                 {tripStep === 7 && (
                   <div className="space-y-6">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    <div className="bg-brand-50 border border-brand-200 rounded-lg p-6">
                       <div className="flex items-center mb-4">
-                        <CheckCircle className="w-6 h-6 text-blue-600 mr-2" />
-                        <h3 className="text-lg font-semibold text-blue-800">Trip Summary</h3>
+                        <CheckCircle className="w-6 h-6 text-brand-700 mr-2" />
+                        <h3 className="text-lg font-semibold text-brand-800">Trip Summary</h3>
                       </div>
-                      <p className="text-blue-700 mb-4">
+                      <p className="text-brand-700 mb-4">
                         Review your trip details and create your personalized travel plan
                       </p>
                       <div className="space-y-3">
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Destination:</span>
-                          <Badge className="bg-blue-100 text-blue-800">
+                          <Badge className="bg-brand-100 text-brand-800">
                             {selectedDestination || "Not selected"}
                           </Badge>
                         </div>
@@ -810,7 +810,7 @@ export default function SearchPage() {
                       (tripStep === 6 && selectedLanguages.length === 0) ||
                       submitting
                     }
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-brand-700 hover:bg-brand-800"
                   >
                     {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     {tripStep === 7 ? (submitting ? 'Building your itinerary...' : 'Create Trip Plan') : 'Next'}

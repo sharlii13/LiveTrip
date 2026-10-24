@@ -18,8 +18,8 @@ const FoodPreferences: React.FC = () => {
       title: 'Vegetarian',
       icon: Leaf,
       description: 'Plant-based meals only',
-      color: 'bg-blue-50 border-blue-200 text-blue-800',
-      selectedColor: 'bg-blue-600 border-blue-600 text-white',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
+      selectedColor: 'bg-brand-700 border-brand-600 text-white',
     },
     {
       id: 'non-vegetarian',
@@ -34,8 +34,8 @@ const FoodPreferences: React.FC = () => {
       title: 'Both',
       icon: Utensils,
       description: 'Flexible with all food types',
-      color: 'bg-blue-50 border-blue-200 text-blue-800',
-      selectedColor: 'bg-blue-600 border-blue-600 text-white',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
+      selectedColor: 'bg-brand-700 border-brand-600 text-white',
     },
   ];
 
@@ -57,7 +57,7 @@ const FoodPreferences: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-100">
       <ProgressIndicator 
         currentStep={currentStep} 
         totalSteps={totalSteps} 
@@ -67,7 +67,7 @@ const FoodPreferences: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Card className="w-full">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
+            <CardTitle className="text-3xl font-bold text-brand-800 mb-2">
               What are your food preferences?
             </CardTitle>
             <CardDescription className="text-lg text-gray-600">
@@ -108,9 +108,9 @@ const FoodPreferences: React.FC = () => {
             </div>
 
             {/* Additional Information */}
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-blue-800 mb-2">💡 Pro Tip</h4>
-              <p className="text-sm text-blue-700">
+            <div className="bg-brand-50 p-4 rounded-lg">
+              <h4 className="font-semibold text-brand-800 mb-2">💡 Pro Tip</h4>
+              <p className="text-sm text-brand-700">
                 Your food preference helps us suggest restaurants that match your dietary needs and 
                 cultural preferences. We'll also consider local specialties and hidden gems!
               </p>
@@ -122,7 +122,7 @@ const FoodPreferences: React.FC = () => {
               <div className="space-y-1 text-sm text-gray-600">
                 <div className="flex justify-between">
                   <span>Destination:</span>
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                  <Badge variant="secondary" className="bg-brand-100 text-brand-800">
                     {tripData.destination}
                   </Badge>
                 </div>
@@ -162,7 +162,7 @@ const FoodPreferences: React.FC = () => {
               <Button 
                 onClick={handleNext}
                 disabled={!selectedPreference}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-brand-700 hover:bg-brand-800"
               >
                 Next
               </Button>

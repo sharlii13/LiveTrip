@@ -24,10 +24,10 @@ export default function ReviewCard({
   onDelete 
 }: ReviewCardProps) {
   const categoryColors = {
-    hotel: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    hotel: "bg-brand-100 text-brand-800 dark:bg-brand-900 dark:text-brand-200",
     restaurant: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-    attraction: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-    experience: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+    attraction: "bg-brand-100 text-brand-800 dark:bg-brand-900 dark:text-brand-200",
+    experience: "bg-brand-100 text-brand-800 dark:bg-brand-900 dark:text-brand-200",
     default: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
   };
 

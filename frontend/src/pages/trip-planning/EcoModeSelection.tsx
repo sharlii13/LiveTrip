@@ -24,7 +24,7 @@ const EcoModeSelection: React.FC = () => {
       icon: Bike,
       description: 'Explore on foot',
       ecoScore: 10,
-      color: 'bg-blue-50 border-blue-200 text-blue-800',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
     },
     {
       id: 'bicycle',
@@ -32,7 +32,7 @@ const EcoModeSelection: React.FC = () => {
       icon: Bike,
       description: 'Rent a bike',
       ecoScore: 9,
-      color: 'bg-blue-50 border-blue-200 text-blue-800',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
     },
     {
       id: 'public-transport',
@@ -40,7 +40,7 @@ const EcoModeSelection: React.FC = () => {
       icon: Bus,
       description: 'Buses, trams, metro',
       ecoScore: 8,
-      color: 'bg-blue-50 border-blue-200 text-blue-800',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
     },
     {
       id: 'train',
@@ -48,7 +48,7 @@ const EcoModeSelection: React.FC = () => {
       icon: Train,
       description: 'Intercity trains',
       ecoScore: 7,
-      color: 'bg-blue-50 border-blue-200 text-blue-800',
+      color: 'bg-brand-50 border-brand-200 text-brand-800',
     },
     {
       id: 'car',
@@ -119,14 +119,14 @@ const EcoModeSelection: React.FC = () => {
   };
 
   const getEcoScoreColor = (score: number) => {
-    if (score >= 8) return 'text-green-600';
-    if (score >= 6) return 'text-blue-600';
+    if (score >= 8) return 'text-brand-700';
+    if (score >= 6) return 'text-brand-700';
     if (score >= 4) return 'text-orange-600';
     return 'text-red-600';
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-100">
       <PlanningOverlay open={submitting} destination={tripData.destination} />
       <ProgressIndicator 
         currentStep={currentStep} 
@@ -137,7 +137,7 @@ const EcoModeSelection: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Card className="w-full">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
+            <CardTitle className="text-3xl font-bold text-brand-800 mb-2">
               Choose your eco-friendly options
             </CardTitle>
             <CardDescription className="text-lg text-gray-600">
@@ -147,13 +147,13 @@ const EcoModeSelection: React.FC = () => {
           
           <CardContent className="space-y-8">
             {/* Eco Mode Toggle */}
-            <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+            <div className="bg-brand-50 p-6 rounded-lg border border-brand-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <Leaf className="w-6 h-6 text-blue-600" />
+                  <Leaf className="w-6 h-6 text-brand-700" />
                   <div>
-                    <h3 className="text-lg font-semibold text-blue-800">Eco Mode</h3>
-                    <p className="text-sm text-blue-700">
+                    <h3 className="text-lg font-semibold text-brand-800">Eco Mode</h3>
+                    <p className="text-sm text-brand-700">
                       Enable eco-friendly recommendations and sustainable travel options
                     </p>
                   </div>
@@ -161,7 +161,7 @@ const EcoModeSelection: React.FC = () => {
                 <Switch
                   checked={ecoMode}
                   onCheckedChange={handleEcoModeToggle}
-                  className="data-[state=checked]:bg-blue-600"
+                  className="data-[state=checked]:bg-brand-700"
                 />
               </div>
             </div>
@@ -186,18 +186,18 @@ const EcoModeSelection: React.FC = () => {
                       onClick={() => handleTransportSelect(option.id)}
                       className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${
                         isSelected 
-                          ? 'border-blue-500 bg-blue-50' 
+                          ? 'border-brand-500 bg-brand-50' 
                           : `${option.color} hover:shadow-sm`
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <Icon className={`w-5 h-5 ${isSelected ? 'text-blue-600' : ''}`} />
-                        {isSelected && <Check className="w-4 h-4 text-blue-600" />}
+                        <Icon className={`w-5 h-5 ${isSelected ? 'text-brand-700' : ''}`} />
+                        {isSelected && <Check className="w-4 h-4 text-brand-700" />}
                       </div>
-                      <h4 className={`font-medium text-sm ${isSelected ? 'text-blue-800' : ''}`}>
+                      <h4 className={`font-medium text-sm ${isSelected ? 'text-brand-800' : ''}`}>
                         {option.title}
                       </h4>
-                      <p className={`text-xs ${isSelected ? 'text-blue-600' : 'text-gray-600'}`}>
+                      <p className={`text-xs ${isSelected ? 'text-brand-700' : 'text-gray-600'}`}>
                         {option.description}
                       </p>
                       <div className="mt-2">
@@ -213,9 +213,9 @@ const EcoModeSelection: React.FC = () => {
 
             {/* Eco Mode Benefits */}
             {ecoMode && (
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-semibold text-blue-800 mb-2">🌱 Eco Mode Benefits</h4>
-                <ul className="text-sm text-blue-700 space-y-1">
+              <div className="bg-brand-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-brand-800 mb-2">🌱 Eco Mode Benefits</h4>
+                <ul className="text-sm text-brand-700 space-y-1">
                   <li>• Sustainable accommodation recommendations</li>
                   <li>• Eco-friendly restaurant suggestions</li>
                   <li>• Carbon footprint tracking</li>
@@ -231,7 +231,7 @@ const EcoModeSelection: React.FC = () => {
               <div className="space-y-1 text-sm text-gray-600">
                 <div className="flex justify-between">
                   <span>Destination:</span>
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                  <Badge variant="secondary" className="bg-brand-100 text-brand-800">
                     {tripData.destination}
                   </Badge>
                 </div>
@@ -255,7 +255,7 @@ const EcoModeSelection: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>Eco Mode:</span>
-                  <Badge variant={ecoMode ? "default" : "outline"} className={ecoMode ? "bg-blue-600" : ""}>
+                  <Badge variant={ecoMode ? "default" : "outline"} className={ecoMode ? "bg-brand-700" : ""}>
                     {ecoMode ? 'Enabled' : 'Disabled'}
                   </Badge>
                 </div>
@@ -271,7 +271,7 @@ const EcoModeSelection: React.FC = () => {
               <Button
                 onClick={handleNext}
                 disabled={submitting}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-brand-700 hover:bg-brand-800"
               >
                 {submitting ? 'Planning your trip...' : 'Create Trip Plan'}
               </Button>

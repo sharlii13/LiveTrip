@@ -45,7 +45,7 @@ export default function LanguagePreference() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-100 py-8">
       <div className="max-w-4xl mx-auto px-4">
         <ProgressIndicator currentStep={7} totalSteps={8} tripName="Trip Planning" />
         
@@ -61,7 +61,7 @@ export default function LanguagePreference() {
           <div className="lg:col-span-2">
             <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle className="text-blue-800 flex items-center">
+                <CardTitle className="text-brand-800 flex items-center">
                   <Globe className="w-6 h-6 mr-2" />
                   Select Languages
                 </CardTitle>
@@ -83,7 +83,7 @@ export default function LanguagePreference() {
                       placeholder="Search for languages..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 border-blue-300 focus:border-blue-500 focus:ring-blue-500"
+                      className="pl-10 border-brand-300 focus:border-brand-500 focus:ring-brand-500"
                     />
                   </div>
                 </div>
@@ -103,8 +103,8 @@ export default function LanguagePreference() {
                           translate="no"
                           className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                             isSelected
-                              ? "border-blue-500 bg-blue-50 text-blue-800"
-                              : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-25"
+                              ? "border-brand-500 bg-brand-50 text-brand-800"
+                              : "border-gray-200 bg-white hover:border-brand-300 hover:bg-brand-50"
                           }`}
                         >
                           <div className="flex items-center space-x-3">
@@ -115,7 +115,7 @@ export default function LanguagePreference() {
                             </div>
                           </div>
                           {isSelected && (
-                            <Check className="w-5 h-5 text-blue-600" />
+                            <Check className="w-5 h-5 text-brand-700" />
                           )}
                         </div>
                       );
@@ -135,7 +135,7 @@ export default function LanguagePreference() {
                         return (
                           <Badge
                             key={langCode}
-                            className="bg-blue-100 text-blue-800 px-3 py-1 text-sm"
+                            className="bg-brand-100 text-brand-800 px-3 py-1 text-sm"
                           >
                             {language?.flag} {language?.name}
                           </Badge>
@@ -159,7 +159,7 @@ export default function LanguagePreference() {
                   <Button
                     onClick={handleNext}
                     disabled={!isValid}
-                    className="bg-blue-600 hover:bg-blue-700 flex items-center px-6 py-2"
+                    className="bg-brand-700 hover:bg-brand-800 flex items-center px-6 py-2"
                   >
                     Next
                     <ChevronRight className="w-4 h-4 ml-2" />
@@ -172,14 +172,14 @@ export default function LanguagePreference() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Trip Summary */}
-            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+            <Card className="bg-gradient-to-br from-brand-50 to-brand-50 border-brand-200">
               <CardHeader>
-                <CardTitle className="text-blue-800 text-lg">Trip Summary</CardTitle>
+                <CardTitle className="text-brand-800 text-lg">Trip Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Destination:</span>
-                  <Badge className="bg-blue-100 text-blue-800">
+                  <Badge className="bg-brand-100 text-brand-800">
                     {tripData.destination || "Not selected"}
                   </Badge>
                 </div>
@@ -212,9 +212,9 @@ export default function LanguagePreference() {
             </Card>
 
             {/* Language Tips */}
-            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+            <Card className="bg-gradient-to-br from-brand-50 to-brand-50 border-brand-200">
               <CardHeader>
-                <CardTitle className="text-green-800 text-lg flex items-center">
+                <CardTitle className="text-brand-800 text-lg flex items-center">
                   <Globe className="w-5 h-5 mr-2" />
                   Language Tips
                 </CardTitle>

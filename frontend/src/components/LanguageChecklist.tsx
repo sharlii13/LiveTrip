@@ -29,14 +29,14 @@ export default function LanguageChecklist({ selected, onChange }: Props) {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input id="languageSearch" type="text" placeholder="Search for languages..." value={query}
                  onChange={(e) => setQuery(e.target.value)}
-                 className="pl-10 border-green-300 focus:border-green-500 focus:ring-green-500" />
+                 className="pl-10 border-brand-300 focus:border-brand-500 focus:ring-brand-500" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-green-200 rounded-lg p-3">
+      <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-brand-200 rounded-lg p-3">
         {shown.map((l) => (
-          <label key={l.code} className="flex items-center space-x-2 p-2 hover:bg-green-100 rounded cursor-pointer" translate="no">
+          <label key={l.code} className="flex items-center space-x-2 p-2 hover:bg-brand-100 rounded cursor-pointer" translate="no">
             <input type="checkbox" checked={selected.includes(l.code)} onChange={() => toggle(l.code)}
-                   className="border-green-500 text-green-600 focus:ring-green-500" />
+                   className="border-brand-500 text-brand-700 focus:ring-brand-500" />
             <span className="text-sm">{l.flag} {l.name} <span className="text-muted-foreground">{l.native !== l.name ? l.native : ""}</span></span>
           </label>
         ))}

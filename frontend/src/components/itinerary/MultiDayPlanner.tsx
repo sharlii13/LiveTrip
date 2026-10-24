@@ -28,15 +28,15 @@ const categoryIcons: { [key: string]: React.ReactNode } = {
 // Category colors mapping
 const categoryColors: { [key: string]: string } = {
   historical: 'bg-amber-100 text-amber-800 border-amber-200',
-  nature: 'bg-green-100 text-green-800 border-green-200',
+  nature: 'bg-brand-100 text-brand-800 border-brand-200',
   food: 'bg-red-100 text-red-800 border-red-200',
-  shopping: 'bg-purple-100 text-purple-800 border-purple-200',
-  cultural: 'bg-blue-100 text-blue-800 border-blue-200',
+  shopping: 'bg-brand-100 text-brand-800 border-brand-200',
+  cultural: 'bg-brand-100 text-brand-800 border-brand-200',
   religious: 'bg-orange-100 text-orange-800 border-orange-200',
   entertainment: 'bg-pink-100 text-pink-800 border-pink-200',
   fort: 'bg-gray-100 text-gray-800 border-gray-200',
-  museum: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-  park: 'bg-teal-100 text-teal-800 border-teal-200',
+  museum: 'bg-brand-100 text-brand-800 border-brand-200',
+  park: 'bg-brand-100 text-brand-800 border-brand-200',
   temple: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   historic: 'bg-amber-100 text-amber-800 border-amber-200',
 };
@@ -84,13 +84,13 @@ const MultiDayPlanner: React.FC<MultiDayPlannerProps> = ({ onItineraryGenerated 
   };
 
   const getDiversityColor = (score: number) => {
-    if (score >= 0.8) return 'text-green-600';
+    if (score >= 0.8) return 'text-brand-700';
     if (score >= 0.6) return 'text-yellow-600';
     return 'text-red-600';
   };
 
   const getUtilizationColor = (percent: number) => {
-    if (percent >= 80) return 'text-green-600';
+    if (percent >= 80) return 'text-brand-700';
     if (percent >= 60) return 'text-yellow-600';
     return 'text-red-600';
   };
@@ -173,7 +173,7 @@ const MultiDayPlanner: React.FC<MultiDayPlannerProps> = ({ onItineraryGenerated 
             <div className="space-y-3">
               {dayItinerary.schedule.map((poi, index) => (
                 <div key={index} className="flex items-center gap-4 p-3 bg-white border rounded-lg hover:shadow-sm transition-shadow">
-                  <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <div className="flex-shrink-0 w-2 h-2 bg-brand-700 rounded-full"></div>
                   
                   <div className="flex-grow">
                     <div className="flex items-center gap-2 mb-1">
@@ -350,15 +350,15 @@ const MultiDayPlanner: React.FC<MultiDayPlannerProps> = ({ onItineraryGenerated 
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div>
-                  <div className="text-2xl font-bold text-blue-600">{itinerary.summary.total_days}</div>
+                  <div className="text-2xl font-bold text-brand-700">{itinerary.summary.total_days}</div>
                   <div className="text-sm text-gray-600">Days</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-green-600">{itinerary.summary.total_pois_covered}</div>
+                  <div className="text-2xl font-bold text-brand-700">{itinerary.summary.total_pois_covered}</div>
                   <div className="text-sm text-gray-600">POIs</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-purple-600">{itinerary.summary.avg_daily_diversity}</div>
+                  <div className="text-2xl font-bold text-brand-700">{itinerary.summary.avg_daily_diversity}</div>
                   <div className="text-sm text-gray-600">Avg Diversity</div>
                 </div>
                 <div>

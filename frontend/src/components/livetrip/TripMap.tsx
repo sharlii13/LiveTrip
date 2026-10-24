@@ -12,8 +12,8 @@ interface Props {
 }
 
 function markerIcon(label: string, slot: Slot, selected: boolean) {
-  const color = slot.status === "completed" ? "#16a34a" : slot.status === "skipped" ? "#9ca3af"
-    : slot.kind === "meal" ? "#ea580c" : "#0f766e";
+  const color = slot.status === "completed" ? "#22d3ee" : slot.status === "skipped" ? "#9ca3af"
+    : slot.kind === "meal" ? "#ea580c" : "#0e7490";
   const size = selected ? 38 : 30;
   return L.divIcon({
     className: "",
@@ -58,7 +58,7 @@ export default function TripMap({ slots, selectedId, onSelect, start }: Props) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <Fit points={points} focus={selected ? [selected.activity.location.latitude, selected.activity.location.longitude] : null} />
-      {route.length > 1 && <Polyline positions={route} pathOptions={{ color: "#0f766e", weight: 3, opacity: 0.7, dashArray: "6 6" }} />}
+      {route.length > 1 && <Polyline positions={route} pathOptions={{ color: "#0e7490", weight: 3, opacity: 0.7, dashArray: "6 6" }} />}
       {located.map((s) => (
         <Marker
           key={s.item_id}

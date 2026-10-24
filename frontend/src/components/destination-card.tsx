@@ -19,10 +19,10 @@ export default function DestinationCard({ destination, variant = "default", onPl
   const [showShareMenu, setShowShareMenu] = useState(false);
 
   const categoryColors = {
-    hotel: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    hotel: "bg-brand-100 text-brand-800 dark:bg-brand-900 dark:text-brand-200",
     restaurant: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200", 
-    attraction: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-    experience: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+    attraction: "bg-brand-100 text-brand-800 dark:bg-brand-900 dark:text-brand-200",
+    experience: "bg-brand-100 text-brand-800 dark:bg-brand-900 dark:text-brand-200"
   };
 
   const handleShare = () => {
@@ -74,7 +74,7 @@ export default function DestinationCard({ destination, variant = "default", onPl
                     setIsBookmarked(!isBookmarked);
                   }}
                 >
-                  <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-blue-500 text-blue-500' : 'text-gray-600'}`} />
+                  <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-brand-500 text-brand-700' : 'text-gray-600'}`} />
                 </Button>
                 <Button
                   size="sm"
@@ -99,7 +99,7 @@ export default function DestinationCard({ destination, variant = "default", onPl
             </div>
             <CardContent className="p-6 flex-1">
               <div className="flex items-start justify-between mb-2">
-                <h3 className="text-xl font-semibold group-hover:text-blue-600 transition-colors duration-300" data-testid={`text-destination-name-${destination.id}`}>
+                <h3 className="text-xl font-semibold group-hover:text-brand-700 transition-colors duration-300" data-testid={`text-destination-name-${destination.id}`}>
                   {destination.name}
                 </h3>
                 <div className="flex items-center">
@@ -132,7 +132,7 @@ export default function DestinationCard({ destination, variant = "default", onPl
                 </div>
                 <div className="flex items-center">
                   {destination.priceRange && (
-                    <span className="text-lg font-semibold text-blue-600" data-testid={`text-price-${destination.id}`}>
+                    <span className="text-lg font-semibold text-brand-700" data-testid={`text-price-${destination.id}`}>
                       {destination.priceRange}
                     </span>
                   )}
@@ -145,7 +145,7 @@ export default function DestinationCard({ destination, variant = "default", onPl
                     e.stopPropagation();
                     onPlanTrip(destination.name);
                   }}
-                  className="w-full bg-blue-600 hover:bg-blue-700 transition-all duration-300 hover:scale-105"
+                  className="w-full bg-brand-700 hover:bg-brand-800 transition-all duration-300 hover:scale-105"
                 >
                   <Calendar className="w-4 h-4 mr-2" />
                   Plan Trip

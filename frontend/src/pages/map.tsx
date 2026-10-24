@@ -42,7 +42,7 @@ export default function MapPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-100">
       <PageHero title="Explore destinations" clip="map" icon={<Globe className="w-6 h-6" />}
                 subtitle="Every destination on a live map. Tap a pin to see it and plan a trip there.">
         {/* View Mode Toggle */}
@@ -86,7 +86,7 @@ export default function MapPage() {
               <Input
                 type="text"
                 placeholder="Search destinations..."
-                className="pl-10 pr-4 py-3 border-blue-300 focus:border-blue-500 focus:ring-blue-500"
+                className="pl-10 pr-4 py-3 border-brand-300 focus:border-brand-500 focus:ring-brand-500"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -105,7 +105,7 @@ export default function MapPage() {
               </SelectContent>
             </Select>
 
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button className="bg-brand-700 hover:bg-brand-800">
               <Filter className="w-4 h-4 mr-2" />
               Filters
             </Button>
@@ -120,7 +120,7 @@ export default function MapPage() {
               <Card className="h-[600px]">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
-                    <Globe className="w-5 h-5 text-blue-600" />
+                    <Globe className="w-5 h-5 text-brand-700" />
                     <span>Interactive Map</span>
                     <Badge variant="outline" className="ml-auto">
                       {filteredDestinations.length} destinations
@@ -168,8 +168,8 @@ export default function MapPage() {
                           key={destination.id}
                           className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${
                             selectedDestination?.id === destination.id
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-200 hover:border-blue-300'
+                              ? 'border-brand-500 bg-brand-50'
+                              : 'border-gray-200 hover:border-brand-300'
                           }`}
                           onClick={() => handleDestinationSelect(destination)}
                         >

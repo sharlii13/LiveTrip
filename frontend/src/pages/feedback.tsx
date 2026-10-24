@@ -55,14 +55,14 @@ export default function FeedbackPage() {
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12">
+      <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-100 py-12">
         <div className="max-w-2xl mx-auto px-4">
           <Card className="text-center">
             <CardHeader>
-              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <ThumbsUp className="w-8 h-8 text-green-600" />
+              <div className="mx-auto w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mb-4">
+                <ThumbsUp className="w-8 h-8 text-brand-700" />
               </div>
-              <CardTitle className="text-2xl text-green-800">Thank You!</CardTitle>
+              <CardTitle className="text-2xl text-brand-800">Thank You!</CardTitle>
               <CardDescription className="text-lg">
                 Your feedback has been submitted successfully. We appreciate your input!
               </CardDescription>
@@ -70,7 +70,7 @@ export default function FeedbackPage() {
             <CardContent>
               <Button 
                 onClick={() => setIsSubmitted(false)}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-brand-700 hover:bg-brand-800"
               >
                 Submit Another Feedback
               </Button>
@@ -85,7 +85,7 @@ export default function FeedbackPage() {
     <>
     <PageHero title="Share your feedback" clip="food" icon={<MessageSquare className="w-6 h-6" />}
               subtitle="Help us improve LiveTrip: share your thoughts, report issues or suggest new features." />
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-100 py-12">
       <div className="max-w-4xl mx-auto px-4">
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -110,7 +110,7 @@ export default function FeedbackPage() {
                         <RadioGroupItem value={type.value} id={type.value} />
                         <div className="flex-1">
                           <div className="flex items-center">
-                            <IconComponent className="w-4 h-4 mr-2 text-blue-600" />
+                            <IconComponent className="w-4 h-4 mr-2 text-brand-700" />
                             <Label htmlFor={type.value} className="font-medium cursor-pointer">
                               {type.label}
                             </Label>
@@ -195,7 +195,7 @@ export default function FeedbackPage() {
                   <Button
                     type="submit"
                     disabled={isSubmitting || !feedback.trim()}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    className="w-full bg-brand-700 hover:bg-brand-800"
                   >
                     {isSubmitting ? (
                       <>
@@ -219,8 +219,8 @@ export default function FeedbackPage() {
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="text-center">
             <CardContent className="pt-6">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <MessageSquare className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="w-6 h-6 text-brand-700" />
               </div>
               <h3 className="font-semibold mb-2">We Listen</h3>
               <p className="text-sm text-gray-600">
@@ -231,8 +231,8 @@ export default function FeedbackPage() {
 
           <Card className="text-center">
             <CardContent className="pt-6">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <ThumbsUp className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ThumbsUp className="w-6 h-6 text-brand-700" />
               </div>
               <h3 className="font-semibold mb-2">We Act</h3>
               <p className="text-sm text-gray-600">
@@ -243,8 +243,8 @@ export default function FeedbackPage() {
 
           <Card className="text-center">
             <CardContent className="pt-6">
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Heart className="w-6 h-6 text-purple-600" />
+              <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Heart className="w-6 h-6 text-brand-700" />
               </div>
               <h3 className="font-semibold mb-2">We Care</h3>
               <p className="text-sm text-gray-600">

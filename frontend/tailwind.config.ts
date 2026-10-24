@@ -11,6 +11,11 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       colors: {
+        // LiveTrip's one accent colour: the teal at the centre of the logo (brand-600 = #0891b2)
+        brand: {
+          50: "#ecfeff", 100: "#cffafe", 200: "#a5f3fc", 300: "#67e8f9", 400: "#22d3ee", 500: "#06b6d4",
+          600: "#0891b2", 700: "#0e7490", 800: "#155e75", 900: "#164e63", 950: "#083344",
+        },
         background: "var(--background)",
         foreground: "var(--foreground)",
         card: {

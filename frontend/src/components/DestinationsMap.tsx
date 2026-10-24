@@ -62,7 +62,7 @@ export default function DestinationsMap({ destinations, selectedId, onSelect, on
               {d.shortDescription && <p className="text-xs mt-1">{d.shortDescription}</p>}
               {onPlan && (
                 <button type="button" onClick={() => onPlan(d)}
-                        className="mt-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-full px-3 py-1">
+                        className="mt-2 text-xs font-semibold text-white bg-brand-700 hover:bg-brand-800 rounded-full px-3 py-1">
                   Plan a trip here
                 </button>
               )}

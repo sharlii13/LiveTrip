@@ -60,7 +60,7 @@ const DateSelection: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-100">
       <ProgressIndicator 
         currentStep={currentStep} 
         totalSteps={totalSteps} 
@@ -70,7 +70,7 @@ const DateSelection: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Card className="w-full">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
+            <CardTitle className="text-3xl font-bold text-brand-800 mb-2">
               When are you going?
             </CardTitle>
             <CardDescription className="text-lg text-gray-600">
@@ -84,7 +84,7 @@ const DateSelection: React.FC = () => {
                 {/* Calendar */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-blue-800">Select Dates</h3>
+                    <h3 className="text-lg font-semibold text-brand-800">Select Dates</h3>
                     <div className="flex space-x-2">
                       <Button variant="outline" size="sm">
                         <ChevronLeft className="w-4 h-4" />
@@ -113,12 +113,12 @@ const DateSelection: React.FC = () => {
 
                 {/* Selection Summary */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-blue-800">Trip Summary</h3>
+                  <h3 className="text-lg font-semibold text-brand-800">Trip Summary</h3>
                   
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Destination:</span>
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      <Badge variant="secondary" className="bg-brand-100 text-brand-800">
                         {tripData.destination}
                       </Badge>
                     </div>
@@ -144,7 +144,7 @@ const DateSelection: React.FC = () => {
                     {getDuration() > 0 && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Duration:</span>
-                        <Badge variant="outline" className="bg-blue-50 text-blue-800">
+                        <Badge variant="outline" className="bg-brand-50 text-brand-800">
                           {getDuration()} day{getDuration() > 1 ? 's' : ''}
                         </Badge>
                       </div>
@@ -171,7 +171,7 @@ const DateSelection: React.FC = () => {
               <Button 
                 onClick={handleNext}
                 disabled={!selectedDates.from || !selectedDates.to || getDuration() > 7}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-brand-700 hover:bg-brand-800"
               >
                 Next
               </Button>

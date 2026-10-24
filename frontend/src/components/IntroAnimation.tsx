@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 
 const DURATION_MS = 3700;
 const SEEN_KEY = "liveTrip-intro-seen";
-const FILL = "linear-gradient(135deg, #38bdf8 0%, #2563eb 45%, #22c55e 100%)";  // LiveTrip blue into travel green
+const FILL = "linear-gradient(135deg, #67e8f9 0%, #06b6d4 45%, #0e7490 100%)";  // the brand teal, light to deep
 const PLANE = "M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z";
 const PLANE_MASK = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='${PLANE}'/></svg>")`;
 

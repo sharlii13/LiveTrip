@@ -21,9 +21,9 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
       case 'cloudy':
         return <Cloud className="w-4 h-4 text-gray-500" />;
       case 'rainy':
-        return <CloudRain className="w-4 h-4 text-blue-500" />;
+        return <CloudRain className="w-4 h-4 text-brand-700" />;
       case 'snowy':
-        return <Snowflake className="w-4 h-4 text-blue-200" />;
+        return <Snowflake className="w-4 h-4 text-brand-200" />;
       case 'windy':
         return <Wind className="w-4 h-4 text-gray-600" />;
       default:
@@ -49,16 +49,16 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
   };
 
   return (
-    <div className={`bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200 ${className}`}>
+    <div className={`bg-gradient-to-r from-brand-50 to-brand-100 rounded-lg p-3 border border-brand-200 ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           {getWeatherIcon()}
           <div>
-            <div className="text-sm font-medium text-blue-800">{temperature}°C</div>
-            <div className="text-xs text-blue-600">{getConditionText()}</div>
+            <div className="text-sm font-medium text-brand-800">{temperature}°C</div>
+            <div className="text-xs text-brand-700">{getConditionText()}</div>
           </div>
         </div>
-        <div className="text-xs text-blue-600 text-right">
+        <div className="text-xs text-brand-700 text-right">
           <div className="font-medium">{location}</div>
           <div>Perfect for travel</div>
         </div>

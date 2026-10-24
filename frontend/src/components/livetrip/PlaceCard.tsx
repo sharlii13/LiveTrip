@@ -123,7 +123,7 @@ export default function PlaceCard({ slot, number, city, selected, onSelect, acti
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className={`font-semibold text-lg leading-tight ${slot.status === "skipped" ? "line-through" : ""}`}>
-                {number !== undefined && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-teal-700 text-white text-xs mr-2 align-middle">{number}</span>}
+                {number !== undefined && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand-700 text-white text-xs mr-2 align-middle">{number}</span>}
                 {slot.kind === "meal" && <Utensils className="w-4 h-4 inline mr-1 -mt-1 text-orange-500" />}
                 <span translate="no">{a.name}</span>
               </p>
@@ -136,7 +136,7 @@ export default function PlaceCard({ slot, number, city, selected, onSelect, acti
                 )}
                 <span className="capitalize">{a.activity_type}</span>
                 {a.weather_dependent && <span>· outdoor</span>}
-                {slot.status === "completed" && <Badge className="bg-green-600">visited</Badge>}
+                {slot.status === "completed" && <Badge className="bg-brand-700">visited</Badge>}
                 {slot.status === "skipped" && <Badge variant="secondary">skipped</Badge>}
                 {slot.locked && <Badge variant="outline">confirmed</Badge>}
                 {slot.overflow && <Badge variant="destructive">runs late</Badge>}
@@ -154,7 +154,7 @@ export default function PlaceCard({ slot, number, city, selected, onSelect, acti
           {info === undefined && slot.kind === "visit" && <Skeleton className="h-10 w-full" />}
           {info?.description && (
             <p className="text-sm line-clamp-3">
-              <mark className="bg-green-100 dark:bg-green-900/40 text-foreground rounded px-0.5">{lead}</mark> {rest}
+              <mark className="bg-brand-100 dark:bg-brand-900/40 text-foreground rounded px-0.5">{lead}</mark> {rest}
             </p>
           )}
           {info && !info.description && slot.kind === "visit" && (

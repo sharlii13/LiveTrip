@@ -304,7 +304,7 @@ export default function TripDetail() {
                 return (
                   <TabsTrigger key={d.day} value={String(d.day)} className="gap-1">
                     Day {d.day}
-                    {f?.wet ? <CloudRain className="w-3 h-3 text-blue-500" /> : f?.temp_max !== undefined ? <Sun className="w-3 h-3 text-amber-500" /> : null}
+                    {f?.wet ? <CloudRain className="w-3 h-3 text-brand-700" /> : f?.temp_max !== undefined ? <Sun className="w-3 h-3 text-amber-500" /> : null}
                   </TabsTrigger>
                 );
               })}

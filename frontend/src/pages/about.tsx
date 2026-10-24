@@ -52,7 +52,7 @@ const About: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-brand-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-6xl mx-auto px-4 py-6">
@@ -88,7 +88,7 @@ const About: React.FC = () => {
         </div>
 
         {/* Mission Statement */}
-        <Card className="mb-16 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+        <Card className="mb-16 bg-gradient-to-r from-brand-600 to-brand-600 text-white">
           <CardContent className="p-12">
             <div className="text-center">
               <h3 className="text-3xl font-bold mb-6">Our Mission</h3>
@@ -115,7 +115,7 @@ const About: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="text-center p-6 hover:shadow-lg transition-shadow">
               <CardContent>
-                <Users className="w-16 h-16 text-blue-600 mx-auto mb-4" />
+                <Users className="w-16 h-16 text-brand-700 mx-auto mb-4" />
                 <h4 className="text-xl font-semibold text-gray-800 mb-2">Innovators</h4>
                 <p className="text-gray-600">
                   Creative minds pushing the boundaries of travel technology
@@ -125,7 +125,7 @@ const About: React.FC = () => {
             
             <Card className="text-center p-6 hover:shadow-lg transition-shadow">
               <CardContent>
-                <Globe className="w-16 h-16 text-green-600 mx-auto mb-4" />
+                <Globe className="w-16 h-16 text-brand-700 mx-auto mb-4" />
                 <h4 className="text-xl font-semibold text-gray-800 mb-2">Travelers</h4>
                 <p className="text-gray-600">
                   Experienced adventurers who understand the real needs of travelers
@@ -135,7 +135,7 @@ const About: React.FC = () => {
             
             <Card className="text-center p-6 hover:shadow-lg transition-shadow">
               <CardContent>
-                <Lightbulb className="w-16 h-16 text-purple-600 mx-auto mb-4" />
+                <Lightbulb className="w-16 h-16 text-brand-700 mx-auto mb-4" />
                 <h4 className="text-xl font-semibold text-gray-800 mb-2">Problem-Solvers</h4>
                 <p className="text-gray-600">
                   Dedicated to solving the everyday challenges of travel planning
@@ -158,7 +158,7 @@ const About: React.FC = () => {
             {values.map((value, index) => (
               <Card key={index} className="p-8 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                 <CardContent className="text-center">
-                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-r from-brand-500 to-brand-500 rounded-full flex items-center justify-center mx-auto mb-6">
                     <value.icon className="w-8 h-8 text-white" />
                   </div>
                   <h4 className="text-2xl font-bold text-gray-800 mb-4">{value.title}</h4>
@@ -171,7 +171,7 @@ const About: React.FC = () => {
 
         {/* Features */}
         <div className="mb-16">
-          <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+          <Card className="bg-gradient-to-r from-brand-50 to-brand-50 border-brand-200">
             <CardHeader className="text-center">
               <CardTitle className="text-3xl font-bold text-gray-800 mb-4">What We Offer</CardTitle>
               <CardDescription className="text-xl text-gray-600">
@@ -182,7 +182,7 @@ const About: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {features.map((feature, index) => (
                   <div key={index} className="flex items-center space-x-3 p-3 rounded-lg bg-white/50">
-                    <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                    <CheckCircle className="w-5 h-5 text-brand-700 flex-shrink-0" />
                     <span className="text-gray-700 font-medium">{feature}</span>
                   </div>
                 ))}
@@ -193,7 +193,7 @@ const About: React.FC = () => {
 
         {/* Philosophy */}
         <div className="text-center">
-          <Card className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+          <Card className="bg-gradient-to-r from-brand-600 to-brand-600 text-white">
             <CardContent className="p-12">
               <Star className="w-16 h-16 mx-auto mb-6 text-yellow-300" />
               <h3 className="text-3xl font-bold mb-6">Our Philosophy</h3>
@@ -212,7 +212,7 @@ const About: React.FC = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               onClick={() => navigate('/search')}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
+              className="bg-brand-700 hover:bg-brand-800 text-white px-8 py-3"
             >
               Start Planning
             </Button>

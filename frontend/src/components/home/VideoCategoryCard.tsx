@@ -11,7 +11,7 @@ interface Props {
   count: number;
   unit: string;
   note: string;
-  accent: string;     // tailwind gradient, e.g. "from-blue-500 to-cyan-400"
+  accent: string;     // tailwind gradient, e.g. "from-brand-500 to-brand-400"
   delay?: number;
 }
 
@@ -57,7 +57,7 @@ export default function VideoCategoryCard({ to, clip, icon, title, subtitle, cou
                 mx.set((e.clientX - r.left) / r.width);
                 my.set((e.clientY - r.top) / r.height);
               }}
-              className="group relative block h-80 rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400">
+              className="group relative block h-80 rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-400">
           <video ref={video} src={`/videos/clips/${clip}.mp4`} poster={`/videos/clips/${clip}.jpg`} muted loop playsInline
                  preload="none" aria-hidden="true"
                  className="absolute inset-0 w-full h-full object-cover scale-105 group-hover:scale-110 transition-transform duration-700" />

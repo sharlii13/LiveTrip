@@ -170,16 +170,16 @@ export default function AssistantBuddy() {
         )}
         <button ref={self} type="button" onClick={() => setOpen((o) => !o)}
                 aria-label={open ? "Close travel assistant" : "Open travel assistant"} aria-expanded={open}
-                className={`pointer-events-auto block rounded-full focus:outline-none focus-visible:ring-4 focus-visible:ring-green-300 ${calm ? "" : "buddy-bob"}`}
+                className={`pointer-events-auto block rounded-full focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-300 ${calm ? "" : "buddy-bob"}`}
                 style={{ width: SIZE, height: SIZE }}>
           <svg viewBox="0 0 64 64" width={SIZE} height={SIZE} aria-hidden="true">
             <defs>
               <radialGradient id="buddy-body" cx="35%" cy="30%" r="75%">
-                <stop offset="0%" stopColor="#bef264" />
-                <stop offset="100%" stopColor="#16a34a" />
+                <stop offset="0%" stopColor="#67e8f9" />
+                <stop offset="100%" stopColor="#0e7490" />
               </radialGradient>
             </defs>
-            <path d="M32 9 C34 4 39 3 42 5 C38 6 35 8 33 11 Z" fill="#15803d" />{/* leaf */}
+            <path d="M32 9 C34 4 39 3 42 5 C38 6 35 8 33 11 Z" fill="#155e75" />{/* leaf */}
             <ellipse cx="32" cy="60" rx="15" ry="2.5" fill="black" opacity=".15" />
             <circle cx="32" cy="34" r="23" fill="url(#buddy-body)" />
             <g className={calm ? "" : "buddy-blink"} style={{ transformOrigin: "32px 31px" }}>
@@ -188,7 +188,7 @@ export default function AssistantBuddy() {
               <circle cx={24 + look.x} cy={32 + look.y} r="3" fill="#0f172a" />
               <circle cx={40 + look.x} cy={32 + look.y} r="3" fill="#0f172a" />
             </g>
-            <path d={bubble || open ? "M26 43 Q32 49 38 43" : "M27 44 Q32 47 37 44"} stroke="#14532d" strokeWidth="2.2"
+            <path d={bubble || open ? "M26 43 Q32 49 38 43" : "M27 44 Q32 47 37 44"} stroke="#083344" strokeWidth="2.2"
                   fill="none" strokeLinecap="round" />
           </svg>
         </button>

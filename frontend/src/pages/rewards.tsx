@@ -90,7 +90,7 @@ export default function Rewards() {
               <div key={c.code} className="space-y-1">
                 <div className="flex justify-between text-sm">
                   <span>{c.title}</span>
-                  {c.completed ? <Badge className="bg-green-600">+{c.points} done</Badge> : <span className="text-muted-foreground">{c.progress}/{c.goal} · {c.points} pts</span>}
+                  {c.completed ? <Badge className="bg-brand-700">+{c.points} done</Badge> : <span className="text-muted-foreground">{c.progress}/{c.goal} · {c.points} pts</span>}
                 </div>
                 <Progress value={(c.progress / c.goal) * 100} />
               </div>
@@ -171,7 +171,7 @@ export default function Rewards() {
             {dash.recent_activity.map((e, i) => (
               <div key={i} className="flex justify-between">
                 <span>{KIND_LABEL[e.kind] ?? e.kind} <span className="text-xs text-muted-foreground">{new Date(e.date).toLocaleDateString()}</span></span>
-                <span className={e.points < 0 ? "text-red-600" : "text-green-700"}>{e.points > 0 ? "+" : ""}{e.points}</span>
+                <span className={e.points < 0 ? "text-red-600" : "text-brand-700"}>{e.points > 0 ? "+" : ""}{e.points}</span>
               </div>
             ))}
             {dash.redemptions.length > 0 && <p className="font-medium pt-2">Your codes</p>}
