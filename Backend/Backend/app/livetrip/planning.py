@@ -355,6 +355,15 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
                 continue
             pool.setdefault(p["name"].lower(), p)  # by name: Google sometimes lists one place under two ids
 
+    if len(pool) < days * max_visits:  # a small town: look around it too, so a longer trip still fills its days
+        more = await asyncio.gather(*[search_places(f"{q} near {destination}", near=center, limit=20) for q in
+                                      ("places to visit", "famous temples", "forts and historical places",
+                                       "waterfalls and nature spots")], return_exceptions=True)
+        for res in more:
+            for p in ([] if isinstance(res, Exception) else res):
+                if p["category"] not in ("lodging", "food") and road_km(center, (p["lat"], p["lng"])) <= 60:
+                    pool.setdefault(p["name"].lower(), p)
+
     forced: List[Dict] = []
     wanted = list(must_visit or [])
     if owner:
@@ -398,7 +407,11 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
     # one area per day (places close together), then the route solver picks and times that day's stops
     schedule: Dict[int, List[Dict]] = {}
     ids = {id(p): i for i, p in enumerate(ranked, 1)}
-    for day, area in area_days(ranked, days, max_visits).items():
+    remaining = area_pool(ranked)
+    for day in range(1, days + 1):
+        area = next_area(remaining, ranked, max_visits, days - day + 1)
+        if not area:
+            break
         request = MultiDayPlanRequest(
             start_location=Location(lat=origin[0], lng=origin[1]), days=1, available_hours_per_day=hours,
             poi_list=[pois[ids[id(p)]] for p in area if ids[id(p)] in pois],
@@ -413,6 +426,9 @@ async def generate(db: Session, owner: Optional[User], destination: str, start: 
             chosen = area[:max_visits]
             state["estimated"] = True
         schedule[day] = trim_outliers(chosen, [p for p in area if p not in chosen])
+        # places this day didn't use go back for the next days, in ranking order
+        remaining[:] = sorted(remaining + [p for p in area if not any(p is q for q in schedule[day])],
+                              key=lambda p: ids[id(p)])
 
     # each place once across the whole trip, and every must-visit / saved place guaranteed a slot
     seen: set = set()
@@ -491,17 +507,20 @@ def _pt(p: Dict) -> Tuple[float, float]:
     return p["lat"], p["lng"]
 
 
-def area_days(ranked: List[Dict], days: int, per_day: int) -> Dict[int, List[Dict]]:
-    """Group the best places into one compact area per day.
-
-    Each day starts from the best place not used yet and gathers the best places near it: within CLUSTER_KM,
-    widening step by step only when too few are near (spread-out destinations like Goa). Each area holds up to 2x a day's stops so the
-    solver can still choose by opening hours. Places open only part of the day (e.g. night markets) are left out
-    unless they are must-visit (score 10, ranked first)."""
+def area_pool(ranked: List[Dict]) -> List[Dict]:
+    """Places a day can be built from: open through the day (not e.g. night markets), unless must-visit."""
     def daytime(p: Dict) -> bool:
         open_t, close_t = _open_close(p.get("hours", []))
         return open_t <= "11:00" and close_t >= "16:00"
+    return [p for p in ranked if daytime(p) or p.get("must_visit")]
 
+
+def next_area(pool: List[Dict], ranked: List[Dict], per_day: int, days_left: int) -> List[Dict]:
+    """Take the next day's area out of `pool` (best first): the best place left and the best places near it,
+    within CLUSTER_KM, widening step by step only when too few are near (spread-out destinations like Goa).
+
+    An area holds up to 2x a day's stops so the solver can still choose by opening hours, but when places are
+    scarce (a small town, open-data fallback) it takes only its fair share, so later days are not left empty."""
     def words(p: Dict) -> set:
         return {w for w in re.sub(r"[^a-z0-9 ]", " ", p["name"].lower()).split() if len(w) > 2} - STOPWORDS
 
@@ -512,24 +531,32 @@ def area_days(ranked: List[Dict], days: int, per_day: int) -> Dict[int, List[Dic
     def same_kind(p: Dict, q: Dict) -> bool:
         return p.get("category") == q.get("category") and bool((words(p) & words(q)) - common)
 
-    pool = [p for p in ranked if daytime(p) or p.get("must_visit")]
+    if not pool:
+        return []
+    cap = per_day * 2 if len(pool) >= days_left * per_day * 2 else max(1, -(-len(pool) // days_left))
+    seed = pool.pop(0)
+    area = [seed]
+    for radius in (CLUSTER_KM, 2 * CLUSTER_KM, 4 * CLUSTER_KM, 8 * CLUSTER_KM, None):
+        for p in [p for p in pool if radius is None or haversine_km(_pt(seed), _pt(p)) <= radius]:
+            if len(area) >= cap:
+                break
+            if any(same_kind(p, q) for q in area):
+                continue  # three wax museums in a day is not a plan; it stays available for another day
+            area.append(p)
+            pool.remove(p)
+        if len(area) >= min(per_day, cap):
+            break
+    return area
+
+
+def area_days(ranked: List[Dict], days: int, per_day: int) -> Dict[int, List[Dict]]:
+    """One compact area per day (see next_area), without the solver: what each day starts from."""
+    pool = area_pool(ranked)
     out: Dict[int, List[Dict]] = {}
     for day in range(1, days + 1):
-        if not pool:
-            break
-        seed = pool.pop(0)
-        area = [seed]
-        for radius in (CLUSTER_KM, 2 * CLUSTER_KM, 4 * CLUSTER_KM, 8 * CLUSTER_KM, None):
-            for p in [p for p in pool if radius is None or haversine_km(_pt(seed), _pt(p)) <= radius]:
-                if len(area) >= per_day * 2:
-                    break
-                if any(same_kind(p, q) for q in area):
-                    continue  # three wax museums in a day is not a plan; it stays available for another day
-                area.append(p)
-                pool.remove(p)
-            if len(area) >= per_day:
-                break
-        out[day] = area
+        area = next_area(pool, ranked, per_day, days - day + 1)
+        if area:
+            out[day] = area
     return out
 
 

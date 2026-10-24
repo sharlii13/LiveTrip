@@ -1,4 +1,5 @@
 """End-to-end API flows for every LiveTrip feature (Google and weather are faked in conftest)."""
+import asyncio
 from datetime import date, timedelta
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
@@ -861,3 +862,26 @@ def test_rule_assistant_answers_top_places_anywhere_and_admits_ai_trouble(make_u
     monkeypatch.setattr(ai_assistant, "reply", down)
     busy = a.post("/api/assistant/message", json={"message": "hello there"}).json()
     assert busy["intent"] == "help" and busy["reply"].startswith("My AI brain is busy")
+
+
+def test_small_towns_still_fill_every_day(make_user, monkeypatch):
+    """Open-data searches for a small town can find only a handful of places: each day still gets some."""
+    from livetrip import planning
+    from livetrip.planning import area_days
+    place = lambda name, lat, lng: {"name": name, "lat": lat, "lng": lng, "hours": [], "category": "culture"}
+    few = [place(f"Sight {c}", 19.09 + i * 0.003, 74.74) for i, c in enumerate("ABCDEF")]
+    days = area_days(few, 3, 5)
+    assert sorted(days) == [1, 2, 3] and all(days[d] for d in days)
+
+    six = [{"name": f"Ahilyanagar sight {c}", "place_id": f"a{c}", "address": "", "lat": 19.09 + i * 0.004,
+            "lng": 74.74, "rating": 4.2, "rating_count": 100, "types": ["tourist_attraction"], "category": "culture",
+            "outdoor": False, "hours": [], "source": "openstreetmap"} for i, c in enumerate("ABCDEF")]
+
+    async def only_six(query, near=None, limit=20):
+        return [dict(p) for p in six][:limit]
+
+    monkeypatch.setattr(planning, "search_places", only_six)
+    monkeypatch.setattr(planning, "geocode", lambda name: asyncio.sleep(0, (19.09, 74.74)))
+    itin = make_trip(make_user(), days=3, destination="Ahilyanagar")
+    per_day = [len(visits(itin, d["day"])) for d in itin["days"]]
+    assert len(per_day) == 3 and all(n >= 1 for n in per_day), per_day
