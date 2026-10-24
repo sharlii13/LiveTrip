@@ -49,9 +49,8 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+    // light unless the traveller picked dark with the moon button (the computer's setting no longer decides)
+    const shouldBeDark = localStorage.getItem('theme') === 'dark';
 
     setIsDarkMode(shouldBeDark);
     if (shouldBeDark) {
