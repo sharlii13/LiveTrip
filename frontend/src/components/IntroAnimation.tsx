@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 
 /**
- * Opening animation: a plane and the word "LiveTrip", both cut out of a landscape photo, rise out of the dark;
- * the plane flies off, the photo opens out from the word to fill the screen, and the app fades in underneath.
+ * Opening animation: a plane and the word "LiveTrip" rise out of the dark; the plane flies off, and the dark splits
+ * open from the word's band to uncover the home page, which has loaded underneath the whole time.
  * Plays once per browser session; a click, a key or "Skip" ends it, and reduced-motion users never see it.
  */
 
-const IMAGE = "/images/intro-hills.jpg";  // a frame of the home page's hero video
 const DURATION_MS = 3700;
 const SEEN_KEY = "liveTrip-intro-seen";
+const FILL = "linear-gradient(135deg, #38bdf8 0%, #2563eb 45%, #22c55e 100%)";  // LiveTrip blue into travel green
 const PLANE = "M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z";
 const PLANE_MASK = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='${PLANE}'/></svg>")`;
 
@@ -31,30 +31,28 @@ export default function IntroAnimation({ onDone }: { onDone: () => void }) {
     return () => { window.clearTimeout(timer); window.removeEventListener("keydown", onKey); };
   }, []);
 
-  const photo = { backgroundImage: `url(${IMAGE})`, backgroundSize: "cover", backgroundPosition: "center" };
-
   return (
-    <div className={`fixed inset-0 z-[100] bg-black overflow-hidden intro-root ${leaving ? "intro-leave" : ""}`}
+    <div className={`fixed inset-0 z-[100] overflow-hidden intro-root ${leaving ? "intro-leave" : ""}`}
          onClick={skip} role="img" aria-label="LiveTrip">
-      {/* the photo opening out from the word's band to full screen */}
-      <div className="absolute inset-0 intro-reveal" style={photo} />
+      {/* the dark, in two halves that part from the word's band to show the home page */}
+      <div className="absolute inset-x-0 top-0 h-1/2 bg-black intro-curtain-top" />
+      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-black intro-curtain-bottom" />
 
-      {/* the plane, cut out of the photo */}
       <div className="absolute left-1/2 top-1/2 intro-plane"
-           style={{ ...photo, width: "min(34vw, 190px)", height: "min(34vw, 190px)", marginLeft: "calc(min(34vw, 190px) / -2)",
+           style={{ background: FILL, width: "min(34vw, 190px)", height: "min(34vw, 190px)",
+                    marginLeft: "calc(min(34vw, 190px) / -2)",
                     WebkitMaskImage: PLANE_MASK, maskImage: PLANE_MASK, WebkitMaskSize: "contain", maskSize: "contain",
                     WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat", WebkitMaskPosition: "center", maskPosition: "center" }} />
 
-      {/* the word, cut out of the photo */}
       <div className="absolute inset-x-0 top-1/2 flex justify-center intro-word" translate="no">
         <span className="font-black tracking-tight leading-none select-none"
-              style={{ ...photo, fontSize: "clamp(3.5rem, 17vw, 10rem)", WebkitBackgroundClip: "text", backgroundClip: "text",
-                       color: "transparent", WebkitTextFillColor: "transparent" }}>
+              style={{ background: FILL, fontSize: "clamp(3.5rem, 17vw, 10rem)", WebkitBackgroundClip: "text",
+                       backgroundClip: "text", color: "transparent", WebkitTextFillColor: "transparent" }}>
           LiveTrip
         </span>
       </div>
 
-      <button type="button" className="absolute bottom-6 right-6 text-white/70 hover:text-white text-sm px-3 py-1 rounded-full border border-white/30"
+      <button type="button" className="absolute bottom-6 right-6 text-white/70 hover:text-white text-sm px-3 py-1 rounded-full border border-white/30 intro-skip"
               onClick={(e) => { e.stopPropagation(); skip(); }}>
         Skip
       </button>
