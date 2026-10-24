@@ -60,20 +60,37 @@ async def recommend_restaurants(lat: float, lng: float, diet: str = "any", budge
             "note": "Ratings and hours come from Google Places; dietary match is based on the place listing."}
 
 
+STAY_SORTS = {
+    "nearest": lambda p: (p["distance_km"], -p["rating"]),
+    "rating": lambda p: (-(p["rating"] or 0), -(p["rating_count"] or 0), p["distance_km"]),
+    "reviews": lambda p: (-(p["rating_count"] or 0), p["distance_km"]),
+    "best": lambda p: -p["score"],  # rating and closeness together
+}
+
+
 @router.get("/recommendations/stays")
 async def recommend_stays(trip_id: Optional[int] = None, city: str = "", lat: Optional[float] = None,
                           lng: Optional[float] = None, budget: str = "medium", type: str = "hotel",
-                          family: bool = False, pets: bool = False,
+                          family: bool = False, pets: bool = False, day: Optional[int] = None, sort: str = "nearest",
                           user: Optional[User] = Depends(optional_user), db: Session = Depends(get_db)):
-    """Stays near the trip's planned stops. Live prices and availability need a booking API."""
+    """Stays near a point: your location (lat/lng), one day's stops (day), or all the trip's stops, sorted by
+    distance, rating or reviews. Live prices and availability need a booking API."""
+    if sort not in STAY_SORTS:
+        raise HTTPException(400, f"sort must be one of: {', '.join(STAY_SORTS)}")
+    near_what = "the location you shared"
     if trip_id:
         trip = get_trip(db, trip_id, user)
         city = trip.destination
-        stops = [(i["lat"], i["lng"]) for i in load_items(db, trip) if i["kind"] == "visit" and i["lat"] is not None]
-        center = (sum(s[0] for s in stops) / len(stops), sum(s[1] for s in stops) / len(stops)) if stops \
-            else (trip.start_lat, trip.start_lng)
-    elif lat is not None and lng is not None:
+    if lat is not None and lng is not None:
         center = (lat, lng)
+    elif trip_id:
+        items = [i for i in load_items(db, trip) if i["kind"] == "visit" and i["lat"] is not None]
+        if day:
+            items = [i for i in items if i["day"] == day]
+        stops = [(i["lat"], i["lng"]) for i in items]
+        center = ((sum(s[0] for s in stops) / len(stops), sum(s[1] for s in stops) / len(stops)) if stops
+                  else (trip.start_lat, trip.start_lng))
+        near_what = f"the middle of day {day}'s stops" if day else "the middle of your planned stops"
     elif city:
         center = None
     else:
@@ -83,8 +100,9 @@ async def recommend_stays(trip_id: Optional[int] = None, city: str = "", lat: Op
     query = " ".join(w for w in words if w) + (f" in {city}" if city else "")
     found = [p for p in await search_places(query, near=center, limit=20) if p["category"] == "lodging"]
     ranked = _rank(found, center or (found[0]["lat"], found[0]["lng"]) if found else (0, 0), {})
-    return {"results": ranked[:10], "center": center,
-            "note": "Distances are to the middle of your planned stops. Prices and availability are not live; "
+    ranked.sort(key=STAY_SORTS[sort])
+    return {"results": ranked[:10], "center": center, "sort": sort,
+            "note": f"Distances are to {near_what}. Prices and availability are not live; "
                     "check with the property or a booking site."}
 
 
@@ -432,10 +450,11 @@ def _ai_tools(body: AssistantIn, trip: Optional[Trip], items: List[Dict], user: 
             return no_point()
         return remember(await restaurants(*where, diet=diet, radius_km=min(max(radius_km, 0.5), 20), boosts=boosts))
 
-    async def find_stays(budget: str = "medium"):
+    async def find_stays(budget: str = "medium", day: Optional[int] = None, sort: str = "nearest"):
         if not trip:
             return {"error": "No trip is open."}
-        stays = await recommend_stays(trip_id=trip.id, budget=budget, user=user, db=db)
+        stays = await recommend_stays(trip_id=trip.id, budget=budget, day=day,
+                                      sort=sort if sort in STAY_SORTS else "nearest", user=user, db=db)
         return {**remember(stays["results"]), "note": stays["note"]}
 
     async def get_place_info(name: str):

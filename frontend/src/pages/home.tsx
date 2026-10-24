@@ -13,6 +13,7 @@ import JourneyStory from "@/components/home/JourneyStory";
 import VideoCategoryCard from "@/components/home/VideoCategoryCard";
 import DestinationTicker from "@/components/home/DestinationTicker";
 import Reveal from "@/components/home/Reveal";
+import PlaceSuggestInput from "@/components/PlaceSuggestInput";
 import type { Destination, ReviewWithUser } from "@shared/schema";
 
 export default function Home() {
@@ -95,12 +96,12 @@ export default function Home() {
                       <div className="flex items-center">
                         <div className="flex-1 flex items-center">
                           <Search className="text-muted-foreground ml-4 mr-3" />
-                          <Input 
-                            type="text" 
-                            placeholder="Where do you want to go?" 
+                          <PlaceSuggestInput
+                            type="text"
+                            placeholder="Where do you want to go?"
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                            onValueChange={setSearchQuery}
+                            onSubmit={handleSearch}
                             className="flex-1 border-0 outline-none focus:ring-0 focus:border-transparent"
                             data-testid="input-search-hero"
                           />

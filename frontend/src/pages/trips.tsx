@@ -13,6 +13,7 @@ import { api, localDate, recentTrips, rememberTrip, Trip } from "@/lib/livetrip"
 import PlanningOverlay from "@/components/livetrip/PlanningOverlay";
 import PageHero, { HeroStat } from "@/components/PageHero";
 import Reveal from "@/components/home/Reveal";
+import PlaceSuggestInput from "@/components/PlaceSuggestInput";
 
 interface TripSummary {
   id: number;
@@ -138,7 +139,8 @@ export default function Trips() {
           <form onSubmit={create} className="space-y-3">
             <div className="space-y-1">
               <Label htmlFor="dest">Destination</Label>
-              <Input id="dest" placeholder="e.g. Jaipur" value={destination} onChange={(e) => setDestination(e.target.value)} required minLength={2} />
+              <PlaceSuggestInput id="dest" placeholder="e.g. Jaipur" value={destination} onValueChange={setDestination}
+                                 required minLength={2} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1"><Label htmlFor="start">From</Label><Input id="start" type="date" value={start} onChange={(e) => setStart(e.target.value)} required /></div>

@@ -61,6 +61,9 @@ export default function TripDetail() {
   const [busy, setBusy] = useState<string | null>(null);
   const [stays, setStays] = useState<Place[] | null>(null);
   const [stayBudget, setStayBudget] = useState("medium");
+  const [stayNear, setStayNear] = useState("trip");      // "trip", "me" or a day number
+  const [staySort, setStaySort] = useState("nearest");
+  const [stayNote, setStayNote] = useState("");
   const [matches, setMatches] = useState<{ wish: { id: number; name: string }; fits: boolean; ops: any[]; message: string }[]>([]);
   const [day, setDay] = useState("1");
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -169,8 +172,18 @@ export default function TripDetail() {
 
   const findStays = () =>
     run("stays", async () => {
-      const r = await api<{ results: Place[] }>(`/api/recommendations/stays?trip_id=${id}&budget=${stayBudget}`);
+      const q = new URLSearchParams({ trip_id: String(id), budget: stayBudget, sort: staySort });
+      if (stayNear === "me") {
+        const pos = await currentPosition();
+        if (!pos) throw new Error("Allow location access to find stays near you.");
+        q.set("lat", String(pos.lat));
+        q.set("lng", String(pos.lng));
+      } else if (stayNear !== "trip") {
+        q.set("day", stayNear);
+      }
+      const r = await api<{ results: Place[]; note: string }>(`/api/recommendations/stays?${q}`);
       setStays(r.results);
+      setStayNote(r.note);
     });
 
   const share = () =>
@@ -428,9 +441,26 @@ export default function TripDetail() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-lg flex items-center gap-2"><Bed className="w-4 h-4" />Where to stay</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Select value={stayNear} onValueChange={setStayNear}>
+                <SelectTrigger className="w-44" aria-label="Find stays near"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="trip">Near all my stops</SelectItem>
+                  {trip.days.map((d) => <SelectItem key={d.day} value={String(d.day)}>Near day {d.day}'s stops</SelectItem>)}
+                  <SelectItem value="me">Near me (my location)</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={staySort} onValueChange={setStaySort}>
+                <SelectTrigger className="w-40" aria-label="Sort stays by"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nearest">Nearest first</SelectItem>
+                  <SelectItem value="rating">Best rated</SelectItem>
+                  <SelectItem value="reviews">Most reviewed</SelectItem>
+                  <SelectItem value="best">Best match</SelectItem>
+                </SelectContent>
+              </Select>
               <Select value={stayBudget} onValueChange={setStayBudget}>
-                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-32" aria-label="Budget"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Budget</SelectItem>
                   <SelectItem value="medium">Mid-range</SelectItem>
@@ -440,7 +470,7 @@ export default function TripDetail() {
               <Button size="sm" onClick={findStays} disabled={busy === "stays"} data-buddy="stays">Find stays</Button>
             </div>
             {stays && <PlaceList places={stays} empty="No stays found near your stops." />}
-            {stays && <p className="text-xs text-muted-foreground">Sorted by distance to your planned stops. Prices and availability are not live.</p>}
+            {stays && <p className="text-xs text-muted-foreground">{stayNote}</p>}
           </CardContent>
         </Card>
 

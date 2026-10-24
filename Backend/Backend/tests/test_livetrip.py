@@ -964,3 +964,29 @@ def test_meals_stay_meals_and_the_buddy_adds_stops_before_dinner(make_user, monk
     preview = res["proposal"]["preview"]["days"][0]["time_slots"]
     assert preview[-1]["activity"]["name"].startswith("Dinner")          # dinner kept, and still last
     assert len(preview) == len(slots) + 1
+
+
+def test_stays_sort_by_location_and_destination_suggestions(make_user, monkeypatch):
+    a = make_user()
+    itin = make_trip(a, days=2)
+    tid = itin["id"]
+    near = a.get(f"/api/recommendations/stays?trip_id={tid}&sort=nearest").json()
+    km = [p["distance_km"] for p in near["results"]]
+    assert km == sorted(km) and "planned stops" in near["note"]
+    day2 = a.get(f"/api/recommendations/stays?trip_id={tid}&day=2&sort=nearest").json()
+    assert "day 2" in day2["note"]
+    me = a.get(f"/api/recommendations/stays?trip_id={tid}&lat=26.95&lng=75.85&sort=rating").json()
+    ratings = [p["rating"] for p in me["results"]]
+    assert ratings == sorted(ratings, reverse=True) and "location you shared" in me["note"]
+    assert a.get(f"/api/recommendations/stays?trip_id={tid}&sort=price").status_code == 400
+
+    from livetrip import suggest
+    async def no_network(q, limit):
+        return [{"name": "Pune Cantonment", "detail": "Maharashtra, India", "source": "openstreetmap"},
+                {"name": "Pune", "detail": "Maharashtra, India", "source": "openstreetmap"}]  # duplicate of the list
+    monkeypatch.setattr(suggest, "photon", no_network)
+    names = [s["name"] for s in a.get("/api/places/suggest?q=pu").json()["suggestions"]]
+    assert set(names[:3]) == {"Pune", "Puri", "Puducherry"}  # names starting with what was typed
+    assert "Pune Cantonment" not in names  # two letters: built-in list only
+    names = [s["name"] for s in a.get("/api/places/suggest?q=pun").json()["suggestions"]]
+    assert names.count("Pune") == 1 and "Pune Cantonment" in names

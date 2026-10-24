@@ -73,9 +73,12 @@ TOOLS = [
          "radius_km": {"type": "number", "description": "Default 3, max 20."}},
          "required": ["diet"], "additionalProperties": False}},
     {"name": "find_stays",
-     "description": "Hotels and other stays near the open trip's stops. Prices and availability are not live.",
+     "description": "Hotels and other stays near the open trip's stops (or one day's stops). Prices and "
+                    "availability are not live.",
      "input_schema": {"type": "object", "properties": {
-         "budget": {"type": "string", "enum": ["low", "medium", "high"]}},
+         "budget": {"type": "string", "enum": ["low", "medium", "high"]},
+         "day": {"type": "integer", "description": "Stay near this day's stops instead of the whole trip's."},
+         "sort": {"type": "string", "enum": ["nearest", "rating", "reviews", "best"]}},
          "required": [], "additionalProperties": False}},
     {"name": "get_place_info",
      "description": "Wikipedia description of a sight (what it is, history). Use it before telling the traveller "

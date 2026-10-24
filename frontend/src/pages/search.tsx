@@ -20,6 +20,7 @@ import {
 import DestinationCard from "@/components/destination-card";
 import SearchFilters from "@/components/search-filters";
 import DestinationsMap from "@/components/DestinationsMap";
+import PlaceSuggestInput from "@/components/PlaceSuggestInput";
 import { useTripPlanning } from "@/contexts/TripPlanningContext";
 import type { Destination } from "@shared/schema";
 import PlanningOverlay from "@/components/livetrip/PlanningOverlay";
@@ -285,14 +286,14 @@ export default function SearchPage() {
           </div>
         <div className="flex flex-col md:flex-row gap-4 items-center">
           <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-700 w-4 h-4" />
-            <Input 
-              type="text" 
-              placeholder="Where do you want to go?" 
-                className="pl-10 pr-4 py-3 border-brand-300 focus:border-brand-500 focus:ring-brand-500"
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-700 w-4 h-4 z-10" />
+            <PlaceSuggestInput
+              type="text"
+              placeholder="Where do you want to go?"
+              className="pl-10 pr-4 py-3 border-brand-300 focus:border-brand-500 focus:ring-brand-500"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              onValueChange={setSearchQuery}
+              onSubmit={handleSearch}
               data-testid="input-search"
             />
           </div>
