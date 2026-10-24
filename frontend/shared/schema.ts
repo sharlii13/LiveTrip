@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, numeric, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, numeric, timestamp, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -33,6 +33,8 @@ export const destinations = pgTable("destinations", {
   phone: text("phone"),
   address: text("address"),
   features: text("features").array(),
+  lat: doublePrecision("lat"),  // the API sends coordinates for the map
+  lng: doublePrecision("lng"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

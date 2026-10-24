@@ -146,3 +146,15 @@ body { top: 0 !important; }
 .ticker-track { animation: ticker 45s linear infinite; }
 .ticker:hover .ticker-track, .ticker:focus-within .ticker-track { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
+
+/* tab page headers (components/PageHero.tsx) */
+@keyframes page-hero-zoom { from { transform: scale(1.04); } to { transform: scale(1.16); } }
+@keyframes page-hero-plane {
+  0% { left: -6%; top: 78%; transform: rotate(60deg); opacity: 0; }
+  10% { opacity: 1; }
+  50% { left: 48%; top: 52%; transform: rotate(80deg); }
+  90% { opacity: 1; }
+  100% { left: 104%; top: 12%; transform: rotate(55deg); opacity: 0; }
+}
+.page-hero-zoom { animation: page-hero-zoom 18s ease-in-out infinite alternate; }
+.page-hero-plane { animation: page-hero-plane 9s ease-in-out infinite; }

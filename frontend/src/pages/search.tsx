@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import DestinationCard from "@/components/destination-card";
 import SearchFilters from "@/components/search-filters";
-import InteractiveMap from "@/components/InteractiveMap";
+import DestinationsMap from "@/components/DestinationsMap";
 import { useTripPlanning } from "@/contexts/TripPlanningContext";
 import type { Destination } from "@shared/schema";
 import PlanningOverlay from "@/components/livetrip/PlanningOverlay";
@@ -360,9 +360,9 @@ export default function SearchPage() {
               {viewMode === 'map' ? (
                 /* Map View */
                 <div className="h-[600px] rounded-lg overflow-hidden shadow-lg">
-                  <InteractiveMap
-                    destinations={destinations}
-                    searchQuery={searchQuery}
+                  <DestinationsMap
+                    destinations={destinations || []}
+                    onPlan={(d) => handlePlanTrip(d.location)}
                     className="h-full"
                   />
                 </div>

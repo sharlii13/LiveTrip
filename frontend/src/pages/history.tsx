@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/livetrip";
+import PageHero from "@/components/PageHero";
 
 interface History {
   trips: { id: number; destination: string; start_date: string; end_date: string; status: string; days: number;
@@ -29,12 +30,11 @@ export default function TravelHistory() {
   if (!data) return <div className="flex justify-center p-16"><RefreshCw className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
+    <>
+    <PageHero title="Travel history" clip="adapt" icon={<MapPin className="w-6 h-6" />}
+              subtitle={`${data.trips.length} trips · ${data.total_points} points · ${data.challenges_completed} challenges completed`} />
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold">Travel history</h1>
-          <p className="text-muted-foreground">{data.trips.length} trips · {data.total_points} points · {data.challenges_completed} challenges completed</p>
-        </div>
         <label className="flex items-center gap-2 text-sm">
           Show my history on my public profile
           <Switch checked={user?.settings?.historyPublic ?? false} onCheckedChange={setPublic} />
@@ -63,5 +63,6 @@ export default function TravelHistory() {
         </Card>
       ))}
     </div>
+    </>
   );
 }

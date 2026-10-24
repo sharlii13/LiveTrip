@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, currentPosition, describeAwards, Award, Photo, Proposal, Trip } from "@/lib/livetrip";
 import ProposalDialog from "@/components/livetrip/ProposalDialog";
+import PageHero from "@/components/PageHero";
 
 interface TripSummary { id: number; destination: string; start_date: string }
 
@@ -100,14 +101,11 @@ export default function Feed() {
   };
 
   return (
+    <>
+    <PageHero title="Live photo feed" clip="earn" icon={<Camera className="w-6 h-6" />} subtitle="See what travelers are discovering right now.">
+      <Button variant="secondary" onClick={() => !requireLogin() && setUploadOpen(true)}><Camera className="w-4 h-4 mr-2" />Share a photo</Button>
+    </PageHero>
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold">Live photo feed</h1>
-          <p className="text-muted-foreground">See what travelers are discovering right now.</p>
-        </div>
-        <Button onClick={() => !requireLogin() && setUploadOpen(true)}><Camera className="w-4 h-4 mr-2" />Share a photo</Button>
-      </div>
       <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); setPhotos(null); load(); }}>
         <Input className="w-48" placeholder="City (e.g. Goa)" value={city} onChange={(e) => setCity(e.target.value)} />
         <Input className="w-48" placeholder="#hashtag" value={hashtag} onChange={(e) => setHashtag(e.target.value)} />
@@ -119,9 +117,10 @@ export default function Feed() {
       {photos?.length === 0 && <p className="text-muted-foreground">No photos yet{city ? ` for ${city}` : ""}. Be the first to share one!</p>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {photos?.map((p) => (
-          <Card key={p.id} className="overflow-hidden">
-            <button className="block w-full" onClick={() => openPhoto(p)}>
-              <img src={p.url} alt={p.caption || p.place_name || "Travel photo"} className="w-full h-60 object-cover" loading="lazy" />
+          <Card key={p.id} className="overflow-hidden group">
+            <button className="block w-full overflow-hidden" onClick={() => openPhoto(p)}>
+              <img src={p.url} alt={p.caption || p.place_name || "Travel photo"} loading="lazy"
+                   className="w-full h-60 object-cover group-hover:scale-105 transition-transform duration-500" />
             </button>
             <CardContent className="pt-3 space-y-2 text-sm">
               <div className="flex items-center justify-between">
@@ -212,6 +211,7 @@ export default function Feed() {
       <ProposalDialog tripId={proposal?.tripId ?? ""} proposal={proposal?.p ?? null} title="Add to your itinerary"
                       onClose={() => setProposal(null)} onApplied={(t: Trip) => navigate(`/trips/${t.id}`)} />
     </div>
+    </>
   );
 }
 

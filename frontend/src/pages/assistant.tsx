@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/livetrip";
 import AssistantPanel from "@/components/livetrip/AssistantPanel";
+import PageHero from "@/components/PageHero";
 
 interface TripSummary { id: number; destination: string; start_date: string }
 
@@ -22,6 +23,8 @@ export default function Assistant() {
   }, [isAuthenticated]);
 
   return (
+    <>
+    <PageHero title="Travel buddy" clip="plan" subtitle="Ask anything about your trip, or about where to go next." />
     <div className="max-w-3xl mx-auto px-4 py-8">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
@@ -41,5 +44,6 @@ export default function Assistant() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }

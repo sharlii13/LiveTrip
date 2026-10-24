@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, localDate, recentTrips, rememberTrip, Trip } from "@/lib/livetrip";
 import PlanningOverlay from "@/components/livetrip/PlanningOverlay";
+import PageHero, { HeroStat } from "@/components/PageHero";
+import Reveal from "@/components/home/Reveal";
 
 interface TripSummary {
   id: number;
@@ -24,6 +26,9 @@ interface TripSummary {
 }
 
 const today = () => localDate();
+const SCENES = ["plan", "map", "adapt", "earn", "stays", "food", "sights", "experiences"];
+// the same destination always gets the same scenic thumbnail
+const sceneFor = (name: string) => SCENES[name.split("").reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % SCENES.length];
 
 export default function Trips() {
   const navigate = useNavigate();
@@ -74,11 +79,17 @@ export default function Trips() {
     }
   };
 
+  const visited = trips?.reduce((n, t) => n + t.completed, 0) ?? 0;
   return (
+    <>
+    <PageHero title="My trips" clip="plan" icon={<MapPin className="w-6 h-6" />}
+              subtitle="Every trip you've planned, live and up to date.">
+      <HeroStat label="trips" value={trips?.length ?? "–"} />
+      <HeroStat label="places visited" value={visited} />
+    </PageHero>
     <div className="max-w-6xl mx-auto px-4 py-8 grid gap-6 lg:grid-cols-5">
       <PlanningOverlay open={creating} destination={destination} />
       <div className="lg:col-span-3 space-y-4">
-        <h1 className="text-3xl font-bold">My trips</h1>
         {!isAuthenticated && (
           <Card><CardContent className="pt-6 text-sm">
             <Link to="/login?next=/trips" className="text-primary underline">Sign in</Link> to keep your trips on every device, check in at places and earn points. Trips you plan now are saved on this device and moved to your account when you sign in.
@@ -86,21 +97,35 @@ export default function Trips() {
         )}
         {trips === null && <RefreshCw className="w-6 h-6 animate-spin text-primary" />}
         {trips?.length === 0 && <p className="text-muted-foreground">No trips yet. Plan your first one with the form.</p>}
-        {trips?.map((t) => (
-          <Link key={t.id} to={`/trips/${t.id}`}>
-            <Card className="hover:shadow-md transition-shadow mb-3">
-              <CardContent className="py-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-lg flex items-center gap-2"><MapPin className="w-4 h-4" />{t.destination}</p>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1"><CalendarDays className="w-3 h-3" />{t.start_date} → {t.end_date}</p>
+        {trips?.map((t, i) => (
+          <Reveal key={t.id} delay={Math.min(i, 6) * 0.07}>
+            <Link to={`/trips/${t.id}`} className="group block mb-3">
+              <Card className="overflow-hidden group-hover:-translate-y-1 transition-transform duration-300">
+                <div className="flex">
+                  <div className="relative w-28 sm:w-36 shrink-0 overflow-hidden">
+                    <img src={`/videos/clips/${sceneFor(t.destination)}.jpg`} alt="" loading="lazy"
+                         className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  </div>
+                  <CardContent className="py-4 flex-1 min-w-0 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-lg flex items-center gap-2 truncate" translate="no"><MapPin className="w-4 h-4 shrink-0 text-primary" />{t.destination}</p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1"><CalendarDays className="w-3 h-3" />{t.start_date} → {t.end_date}</p>
+                      </div>
+                      <Badge variant={t.status === "completed" ? "default" : "secondary"} className="capitalize shrink-0">{t.status}</Badge>
+                    </div>
+                    <div>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500 transition-all duration-700"
+                             style={{ width: `${t.visits ? (100 * t.completed) / t.visits : 0}%` }} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{t.completed}/{t.visits} visited{t.owned ? "" : " · shared"}</p>
+                    </div>
+                  </CardContent>
                 </div>
-                <div className="text-right text-sm">
-                  <Badge variant={t.status === "completed" ? "default" : "secondary"} className="capitalize">{t.status}</Badge>
-                  <p className="text-muted-foreground mt-1">{t.completed}/{t.visits} visited{t.owned ? "" : " · shared"}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+              </Card>
+            </Link>
+          </Reveal>
         ))}
         <p className="text-sm text-muted-foreground">
           Prefer a guided flow? Use the <Link to="/trip-planning" className="text-primary underline">step-by-step planner</Link>.
@@ -144,5 +169,6 @@ export default function Trips() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/livetrip";
+import PageHero from "@/components/PageHero";
 
 interface Wish { id: number; name: string; city: string; source: string; created_at: string }
 
@@ -40,11 +41,9 @@ export default function Wishlist() {
   }, {});
 
   return (
+    <>
+    <PageHero title="Saved places" clip="experiences" icon={<Bookmark className="w-6 h-6" />} subtitle="Places you save here are suggested automatically when you plan a trip to that city." />
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Saved places</h1>
-        <p className="text-muted-foreground">Places you save here are suggested automatically when you plan a trip to that city.</p>
-      </div>
       <form onSubmit={add} className="flex flex-wrap gap-2">
         <Input className="flex-1 min-w-48" placeholder="Place (e.g. Jal Mahal)" value={name} onChange={(e) => setName(e.target.value)} required />
         <Input className="w-40" placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
@@ -65,5 +64,6 @@ export default function Wishlist() {
         </Card>
       ))}
     </div>
+    </>
   );
 }

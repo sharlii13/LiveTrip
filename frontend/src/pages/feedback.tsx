@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import PageHero from "@/components/PageHero";
 
 export default function FeedbackPage() {
   const { user, isAuthenticated } = useAuth();
@@ -81,14 +82,11 @@ export default function FeedbackPage() {
   }
 
   return (
+    <>
+    <PageHero title="Share your feedback" clip="food" icon={<MessageSquare className="w-6 h-6" />}
+              subtitle="Help us improve LiveTrip: share your thoughts, report issues or suggest new features." />
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12">
       <div className="max-w-4xl mx-auto px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">Share Your Feedback</h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Help us improve LiveTrip by sharing your thoughts, reporting issues, or suggesting new features.
-          </p>
-        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Feedback Types */}
@@ -257,6 +255,7 @@ export default function FeedbackPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

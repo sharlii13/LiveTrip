@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/livetrip";
+import PageHero from "@/components/PageHero";
 
 interface Dashboard {
   total_earned: number;
@@ -72,8 +73,9 @@ export default function Rewards() {
   if (!dash) return <div className="flex justify-center p-16"><RefreshCw className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
+    <>
+    <PageHero title="Rewards & progress" clip="sights" icon={<Trophy className="w-6 h-6" />} subtitle="Check in, take on challenges and turn points into real offers." />
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-      <h1 className="text-3xl font-bold">Rewards & progress</h1>
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat icon={Trophy} label="Points earned" value={dash.total_earned} />
         <Stat icon={Gift} label="Available to spend" value={dash.balance} />
@@ -181,6 +183,7 @@ export default function Rewards() {
         </Card>
       </div>
     </div>
+    </>
   );
 }
 

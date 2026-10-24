@@ -6,9 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import InteractiveMap from '@/components/InteractiveMap';
+import DestinationsMap from '@/components/DestinationsMap';
+import { useNavigate } from 'react-router-dom';
+import { useTripPlanning } from '@/contexts/TripPlanningContext';
 import DestinationCard from '@/components/destination-card';
-import LiveTripLogo from '@/components/LiveTripLogo';
+import PageHero from '@/components/PageHero';
 import type { Destination } from '@shared/schema';
 
 export default function MapPage() {
@@ -16,6 +18,8 @@ export default function MapPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
+  const navigate = useNavigate();
+  const { updateTripData } = useTripPlanning();
 
   const { data: destinations, isLoading } = useQuery<Destination[]>({
     queryKey: ['/api/destinations'],
@@ -39,48 +43,39 @@ export default function MapPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <LiveTripLogo size="md" />
-              <h1 className="text-2xl font-bold text-gray-800">Explore Destinations</h1>
-            </div>
-            
-            {/* View Mode Toggle */}
-            <div className="flex items-center space-x-2">
-              <Button
-                variant={viewMode === 'map' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('map')}
-                className="flex items-center space-x-2"
-              >
-                <MapIcon className="w-4 h-4" />
-                <span>Map</span>
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="flex items-center space-x-2"
-              >
-                <List className="w-4 h-4" />
-                <span>List</span>
-              </Button>
-              <Button
-                variant={viewMode === 'split' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('split')}
-                className="flex items-center space-x-2"
-              >
-                <Navigation className="w-4 h-4" />
-                <span>Split</span>
-              </Button>
-            </div>
-          </div>
+      <PageHero title="Explore destinations" clip="map" icon={<Globe className="w-6 h-6" />}
+                subtitle="Every destination on a live map. Tap a pin to see it and plan a trip there.">
+        {/* View Mode Toggle */}
+        <div className="flex items-center space-x-2">
+          <Button
+            variant={viewMode === 'map' ? 'default' : 'secondary'}
+            size="sm"
+            onClick={() => setViewMode('map')}
+            className="flex items-center space-x-2"
+          >
+            <MapIcon className="w-4 h-4" />
+            <span>Map</span>
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'secondary'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+            className="flex items-center space-x-2"
+          >
+            <List className="w-4 h-4" />
+            <span>List</span>
+          </Button>
+          <Button
+            variant={viewMode === 'split' ? 'default' : 'secondary'}
+            size="sm"
+            onClick={() => setViewMode('split')}
+            className="flex items-center space-x-2"
+          >
+            <Navigation className="w-4 h-4" />
+            <span>Split</span>
+          </Button>
         </div>
-      </div>
+      </PageHero>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Search and Filters */}
@@ -133,12 +128,12 @@ export default function MapPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 h-[calc(100%-80px)]">
-                  <InteractiveMap
+                  <DestinationsMap
                     destinations={filteredDestinations}
-                    selectedDestination={selectedDestination?.name}
-                    onDestinationSelect={handleDestinationSelect}
-                    searchQuery={searchQuery}
-                    className="h-full"
+                    selectedId={selectedDestination?.id}
+                    onSelect={handleDestinationSelect}
+                    onPlan={(d) => { updateTripData({ destination: d.location }); navigate('/trip-planning'); }}
+                    className="h-full rounded-none border-0 shadow-none"
                   />
                 </CardContent>
               </Card>

@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Bed, Utensils, Camera, Ticket, Globe } from "lucide-react";
+import { Search, Bed, Utensils, Camera, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import DestinationCard from "@/components/destination-card";
 import ReviewCard from "@/components/review-card";
 import LiveTripLogo from "@/components/LiveTripLogo";
-import InteractiveMap from "@/components/InteractiveMap";
 import { useTripPlanning } from "@/contexts/TripPlanningContext";
 import JourneyStory from "@/components/home/JourneyStory";
 import VideoCategoryCard from "@/components/home/VideoCategoryCard";
@@ -158,33 +157,6 @@ export default function Home() {
                                unit="activities" note="Adventure, culture and local experiences" accent="from-violet-500 to-fuchsia-500"
                                icon={<Ticket className="w-6 h-6 text-white" />} delay={0.3} />
           </div>
-        </div>
-      </section>
-
-          {/* Interactive Map Section */}
-      <section className="py-16 bg-gradient-to-br from-gray-50 to-blue-50">
-        <div className="max-w-7xl mx-auto px-4">
-          <Reveal className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4" data-testid="text-map-title">
-              🌍 Explore the World
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto mb-8">
-              Discover amazing destinations around the globe with our interactive map
-            </p>
-<Link to="/map">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-medium hover:scale-105 transition-all duration-300">
-                <Globe className="w-5 h-5 mr-2" />
-                Open Interactive Map
-              </Button>
-            </Link>
-          </Reveal>
-          
-          <Reveal className="max-w-4xl mx-auto" delay={0.1}>
-            <InteractiveMap 
-              destinations={destinations}
-              className="h-96 rounded-lg shadow-xl"
-            />
-          </Reveal>
         </div>
       </section>
 

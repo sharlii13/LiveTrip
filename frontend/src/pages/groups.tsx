@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, Photo, Trip } from "@/lib/livetrip";
+import PageHero from "@/components/PageHero";
 
 interface GroupRow { id: number; name: string; role: string; trip: string | null; members: number }
 interface GroupDetail {
@@ -53,10 +54,10 @@ export function GroupsList() {
   };
 
   return (
+    <>
+    <PageHero title="Trip groups" clip="stays" icon={<Users className="w-6 h-6" />} subtitle="Plan together: suggest places, vote, share photos and take on group challenges." />
     <div className="max-w-5xl mx-auto px-4 py-8 grid gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2 space-y-3">
-        <h1 className="text-3xl font-bold">Trip groups</h1>
-        <p className="text-muted-foreground">Plan together: suggest places, vote, share photos and take on group challenges.</p>
         {groups === null && <RefreshCw className="w-6 h-6 animate-spin text-primary" />}
         {groups?.length === 0 && <p className="text-muted-foreground">You are not in any group yet.</p>}
         {groups?.map((g) => (
@@ -101,6 +102,7 @@ export function GroupsList() {
         </Card>
       </div>
     </div>
+    </>
   );
 }
 

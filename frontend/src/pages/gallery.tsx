@@ -4,6 +4,7 @@ import { Lock, Globe, Users, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { api, Photo } from "@/lib/livetrip";
+import PageHero from "@/components/PageHero";
 
 interface Album { key: string; title: string; trip_id: number | null; photos: Photo[] }
 
@@ -17,14 +18,11 @@ export default function Gallery() {
   }, []);
 
   return (
+    <>
+    <PageHero title="My travel gallery" clip="sights" icon={<Globe className="w-6 h-6" />} subtitle="Your photos, sorted into trip albums automatically.">
+      <Button asChild variant="secondary"><Link to="/feed">Share a photo</Link></Button>
+    </PageHero>
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">My travel gallery</h1>
-          <p className="text-muted-foreground">Your photos, sorted into trip albums automatically.</p>
-        </div>
-        <Button asChild><Link to="/feed">Share a photo</Link></Button>
-      </div>
       {albums === null && <RefreshCw className="w-6 h-6 animate-spin text-primary" />}
       {albums?.length === 0 && <p className="text-muted-foreground">No photos yet.</p>}
       {albums?.map((a) => (
@@ -50,5 +48,6 @@ export default function Gallery() {
         </Card>
       ))}
     </div>
+    </>
   );
 }
