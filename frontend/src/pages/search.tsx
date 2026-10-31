@@ -25,6 +25,7 @@ import { useTripPlanning } from "@/contexts/TripPlanningContext";
 import type { Destination } from "@shared/schema";
 import PlanningOverlay from "@/components/livetrip/PlanningOverlay";
 import { rememberTrip } from "@/lib/livetrip";
+import { startVideo } from "@/lib/videoAutoplay";
 
 export default function SearchPage() {
   const navigate = useNavigate();
@@ -268,12 +269,16 @@ export default function SearchPage() {
       <div className="mb-8">
           <div className="relative h-64 rounded-lg overflow-hidden mb-6">
             <video
+              ref={startVideo}
               autoPlay
               muted
               loop
               playsInline
-              className="absolute inset-0 w-full h-full object-cover"
+              data-autoplay
+              poster="/videos/hero-poster.jpg"
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
             >
+                <source src="/videos/hero-video-mobile.mp4" type="video/mp4" media="(max-width: 767px)" />
                 <source src="/videos/hero-video.mp4" type="video/mp4" />
                 <source src="/videos/hero-video.webm" type="video/webm" />
             </video>
@@ -317,11 +322,11 @@ export default function SearchPage() {
 
         {/* Search Results */}
         <div className="lg:w-3/4">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
             <p className="text-muted-foreground" data-testid="text-results-count">
               {destinations ? `Showing ${destinations.length} results` : "Loading..."}
             </p>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-wrap items-center gap-3">
                   {/* View Toggle */}
                   <div className="flex items-center space-x-2">
                     <Button

@@ -32,8 +32,8 @@ export function LiveTripMark({ className = 'w-10 h-10' }: { className?: string }
 }
 
 const LiveTripLogo: React.FC<LiveTripLogoProps> = ({ size = 'md', showText = true, className = '' }) => {
-  const markSize = { sm: 'w-7 h-7', md: 'w-9 h-9', lg: 'w-11 h-11' }[size];
-  const textSize = { sm: 'text-lg', md: 'text-2xl', lg: 'text-3xl' }[size];
+  const markSize = { sm: 'w-7 h-7', md: 'w-9 h-9', lg: 'w-9 h-9 sm:w-11 sm:h-11' }[size];
+  const textSize = { sm: 'text-lg', md: 'text-2xl', lg: 'text-2xl sm:text-3xl' }[size];
 
   return (
     <div className={`flex items-center gap-2.5 ${className}`} translate="no">

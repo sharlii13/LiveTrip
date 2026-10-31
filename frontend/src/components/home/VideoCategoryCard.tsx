@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { startVideo } from "@/lib/videoAutoplay";
 import { animate, motion, useInView, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
 
 interface Props {
@@ -34,7 +35,7 @@ export default function VideoCategoryCard({ to, clip, icon, title, subtitle, cou
   useEffect(() => {
     const v = video.current;
     if (!v || calm) return;
-    if (hover || (touch && inView)) v.play().catch(() => {});
+    if (hover || (touch && inView)) startVideo(v);
     else v.pause();
   }, [hover, inView, touch, calm]);
 
@@ -59,7 +60,7 @@ export default function VideoCategoryCard({ to, clip, icon, title, subtitle, cou
               }}
               className="group relative block h-80 rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-400">
           <video ref={video} src={`/videos/clips/${clip}.mp4`} poster={`/videos/clips/${clip}.jpg`} muted loop playsInline
-                 preload="none" aria-hidden="true"
+                 preload="none" aria-hidden="true" data-autoplay={touch && inView ? "" : undefined}
                  className="absolute inset-0 w-full h-full object-cover scale-105 group-hover:scale-110 transition-transform duration-700" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
           <div className="relative h-full flex flex-col justify-end p-6 text-white" style={{ transform: "translateZ(40px)" }}>

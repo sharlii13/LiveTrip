@@ -66,7 +66,8 @@ export default function AssistantBuddy() {
   const { pathname } = useLocation();
   const calm = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const touch = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
-  const home = () => ({ x: window.innerWidth - SIZE - 24, y: window.innerHeight - SIZE - 24 });
+  const home = () => ({ x: window.innerWidth - SIZE - (window.innerWidth < 640 ? 12 : 24),
+                        y: window.innerHeight - SIZE - (window.innerWidth < 1024 ? 72 : 24) });  // above the tab bar
   const [pos, setPos] = useState(home);
   const [bubble, setBubble] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -198,7 +199,7 @@ export default function AssistantBuddy() {
 
       {open && (
         <div role="dialog" aria-label="Travel assistant"
-             className="fixed z-40 right-4 bottom-24 w-[min(24rem,calc(100vw-2rem))] rounded-2xl border bg-background shadow-2xl p-3 buddy-pop">
+             className="fixed z-40 right-4 bottom-[8.5rem] lg:bottom-24 w-[min(24rem,calc(100vw-2rem))] rounded-2xl border bg-background shadow-2xl p-3 buddy-pop">
           <div className="flex items-center justify-between mb-2">
             <p className="font-semibold">Travel buddy{tripId ? "" : " · no trip open"}</p>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="p-1 rounded hover:bg-muted">
@@ -207,7 +208,7 @@ export default function AssistantBuddy() {
           </div>
           <AssistantPanel key={tripId ?? "none"} tripId={tripId}
                           onTripChanged={(t) => window.dispatchEvent(new CustomEvent("livetrip-trip-changed", { detail: t }))}
-                          className="h-[min(30rem,calc(100vh-12rem))]" />
+                          className="h-[min(30rem,calc(100dvh-16rem))] lg:h-[min(30rem,calc(100vh-12rem))]" />
         </div>
       )}
     </>

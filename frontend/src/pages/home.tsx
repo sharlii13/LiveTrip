@@ -14,6 +14,7 @@ import VideoCategoryCard from "@/components/home/VideoCategoryCard";
 import DestinationTicker from "@/components/home/DestinationTicker";
 import Reveal from "@/components/home/Reveal";
 import PlaceSuggestInput from "@/components/PlaceSuggestInput";
+import { startVideo } from "@/lib/videoAutoplay";
 import type { Destination, ReviewWithUser } from "@shared/schema";
 
 export default function Home() {
@@ -56,12 +57,17 @@ export default function Home() {
             <div className="h-[700px] relative overflow-hidden">
               {/* Video Background */}
               <video
+                ref={startVideo}
                 autoPlay
                 muted
                 loop
                 playsInline
-                className="absolute inset-0 w-full h-full object-cover"
+                data-autoplay
+                poster="/videos/hero-poster.jpg"
+                className="absolute inset-0 w-full h-full object-cover pointer-events-none"
               >
+                {/* phones get a lighter file of the same video, so it doesn't stall */}
+                <source src="/videos/hero-video-mobile.mp4" type="video/mp4" media="(max-width: 767px)" />
                 <source src="/videos/hero-video.mp4" type="video/mp4" />
                 <source src="/videos/hero-video.webm" type="video/webm" />
                 {/* Fallback image if video doesn't load */}

@@ -56,8 +56,8 @@ const About: React.FC = () => {
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-6xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <Button variant="outline" onClick={handleGoBack}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Home

@@ -22,6 +22,7 @@ import About from "@/pages/about";
 import HealthPanel from "@/components/HealthPanel";
 import Navbar from "@/components/navbar";
 import AssistantBuddy from "@/components/AssistantBuddy";
+import MobileTabBar from "@/components/MobileTabBar";
 import IntroAnimation, { shouldPlayIntro } from "@/components/IntroAnimation";
 import PermissionRequests from "@/components/PermissionRequests";
 import DateSelection from "@/pages/trip-planning/DateSelection";
@@ -50,7 +51,7 @@ function LatestItinerary() {
 
 function Router({ ready }: { ready: boolean }) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
@@ -91,6 +92,7 @@ function Router({ ready }: { ready: boolean }) {
         <Route path="/history" element={<ProtectedRoute><TravelHistory /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <MobileTabBar />
       {ready && <AssistantBuddy />}
     </div>
   );

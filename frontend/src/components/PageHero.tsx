@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { startVideo } from "@/lib/videoAutoplay";
 
 interface Props {
   title: string;
@@ -14,14 +15,14 @@ interface Props {
 export default function PageHero({ title, subtitle, clip, icon, children }: Props) {
   const calm = useReducedMotion();
   const video = useRef<HTMLVideoElement>(null);
-  useEffect(() => { if (!calm) video.current?.play().catch(() => {}); }, [calm]);
+  useEffect(() => { if (!calm) startVideo(video.current); }, [calm]);
 
   return (
     <section className="relative h-56 sm:h-64 overflow-hidden bg-slate-900 text-white">
       {calm
         ? <img src={`/videos/clips/${clip}.jpg`} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        : <video ref={video} src={`/videos/clips/${clip}.mp4`} poster={`/videos/clips/${clip}.jpg`} muted loop playsInline
-                 aria-hidden="true" className="absolute inset-0 w-full h-full object-cover page-hero-zoom" />}
+        : <video ref={video} src={`/videos/clips/${clip}.mp4`} poster={`/videos/clips/${clip}.jpg`} muted loop playsInline data-autoplay
+                 aria-hidden="true" className="absolute inset-0 w-full h-full object-cover page-hero-zoom pointer-events-none" />}
       <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-900/55 to-transparent" />
 
       {!calm && (

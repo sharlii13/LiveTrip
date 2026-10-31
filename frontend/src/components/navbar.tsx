@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import {
-  Heart, User, LogOut, Sun, Moon, Calendar, MapPin, Camera, Trophy, Users, Images, History, Bot, Languages,
+  Heart, User, LogOut, Sun, Moon, Calendar, MapPin, Trophy, Users, Images, History, Bot, Languages,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -77,7 +77,7 @@ export default function Navbar() {
   return (
     <header className="bg-background border-b border-border sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-4">
+        <div className="flex items-center justify-between h-14 lg:h-16 gap-3 lg:gap-4">
           {/* Logo */}
           <Link to="/" data-testid="link-home">
             <LiveTripLogo size="lg" className="cursor-pointer" />
@@ -97,34 +97,20 @@ export default function Navbar() {
             ))}
           </nav>
 
-          {/* Mobile Navigation */}
-          <nav className="lg:hidden flex space-x-4">
-            <Link to="/trips">
-              <span className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer">
-                <Calendar className="w-4 h-4" /><span>Trips</span>
-              </span>
-            </Link>
-            <Link to="/feed">
-              <span className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer">
-                <Camera className="w-4 h-4" /><span>Photo feed</span>
-              </span>
-            </Link>
-          </nav>
-
           {/* User Actions */}
-          <div className="flex items-center space-x-4">
-            <Link to="/trips" title="My trips" data-testid="button-itinerary-quick">
+          <div className="flex items-center gap-3 lg:gap-4 shrink-0">
+            <Link to="/trips" title="My trips" data-testid="button-itinerary-quick" className="hidden lg:block">
               <span className="text-foreground hover:text-primary transition-colors duration-200 hover:scale-110 relative inline-block">
                 <Calendar className="w-5 h-5" />
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-brand-700 rounded-full animate-pulse"></div>
               </span>
             </Link>
 
-            <Link to="/wishlist" title="Saved places" data-testid="button-favorites">
+            <Link to="/wishlist" title="Saved places" data-testid="button-favorites" className="hidden lg:block">
               <Heart className="w-5 h-5 text-foreground hover:text-primary transition-colors duration-200 hover:scale-110" />
             </Link>
 
-            <InstallAppButton />
+            <span className="hidden lg:inline-flex"><InstallAppButton /></span>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -194,7 +180,7 @@ export default function Navbar() {
             ) : (
               <Button
                 onClick={login}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3 lg:h-10 lg:px-4"
                 data-testid="button-signin"
               >
                 Sign In

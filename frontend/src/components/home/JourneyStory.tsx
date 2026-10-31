@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, MotionValue, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight } from "lucide-react";
+import { startVideo } from "@/lib/videoAutoplay";
 
 /**
  * Scroll story: a full-screen stage stays pinned while you scroll through four chapters. Each chapter is a clip
@@ -42,7 +43,7 @@ function Chapter({ index, progress, active }: { index: number; progress: MotionV
   useEffect(() => {  // only the chapter on screen (and the next) play: smooth hand-over, no wasted decoding
     const v = video.current;
     if (!v) return;
-    if (Math.abs(active - index) <= 1) v.play().catch(() => {});
+    if (Math.abs(active - index) <= 1) startVideo(v);
     else v.pause();
   }, [active, index]);
 
@@ -50,7 +51,7 @@ function Chapter({ index, progress, active }: { index: number; progress: MotionV
     <motion.div className="absolute inset-0" style={{ opacity }} aria-hidden={active !== index}>
       <motion.video ref={video} className="absolute inset-0 w-full h-full object-cover" style={{ scale }}
                     src={`/videos/clips/${c.clip}.mp4`} poster={`/videos/clips/${c.clip}.jpg`}
-                    muted loop playsInline preload="metadata" />
+                    muted loop playsInline preload="metadata" data-autoplay={active === index ? "" : undefined} />
       <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent" />
       {/* outer box places the text; the inner one moves (framer's transform would undo a CSS centring) */}
       <div className="absolute inset-y-0 left-6 sm:left-16 right-14 flex items-end sm:items-center pb-24 sm:pb-0">
