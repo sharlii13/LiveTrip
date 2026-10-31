@@ -14,8 +14,8 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from database import User, get_db
-from .core import (utc_iso, SESSION_COOKIE, TOKEN_DAYS, create_token, current_user, hash_password, loads, optional_user,
-                   profile_of, user_public, verify_password)
+from .core import (utc_iso, PRODUCTION, SESSION_COOKIE, TOKEN_DAYS, create_token, current_user, hash_password, loads,
+                   optional_user, profile_of, public_url, user_public, verify_password)
 from .models import Destination, Profile, Review
 
 router = APIRouter(prefix="/api", tags=["accounts"])
@@ -37,7 +37,8 @@ class LoginIn(BaseModel):
 def _session_response(db: Session, user: User) -> JSONResponse:
     token = create_token(user.id)
     response = JSONResponse({"user": user_public(db, user), "token": token})
-    response.set_cookie(SESSION_COOKIE, token, max_age=TOKEN_DAYS * 86400, httponly=True, samesite="lax")
+    response.set_cookie(SESSION_COOKIE, token, max_age=TOKEN_DAYS * 86400, httponly=True, samesite="lax",
+                        secure=PRODUCTION)
     return response
 
 
@@ -93,8 +94,7 @@ def _google_config() -> Optional[Tuple[str, str, str]]:
     cid, secret = os.getenv("GOOGLE_CLIENT_ID"), os.getenv("GOOGLE_CLIENT_SECRET")
     if not cid or not secret:
         return None
-    base = os.getenv("PUBLIC_APP_URL", "http://localhost:5173").rstrip("/")
-    return cid, secret, f"{base}/api/auth/google/callback"
+    return cid, secret, f"{public_url()}/api/auth/google/callback"
 
 
 def _safe_next(next_url: str) -> str:
@@ -120,7 +120,7 @@ def google_login(next: str = "/trips"):
     response = RedirectResponse(url)
     # the state (with where to go after) comes back from Google; the cookie proves this browser started it
     response.set_cookie(OAUTH_STATE_COOKIE, f"{state}|{_safe_next(next)}", max_age=600, httponly=True,
-                        samesite="lax")
+                        samesite="lax", secure=PRODUCTION)
     return response
 
 
@@ -158,7 +158,7 @@ async def google_callback(request: Request, code: str = "", state: str = "", err
         db.commit()
     response = RedirectResponse(_safe_next(next_url) or "/trips")
     response.set_cookie(SESSION_COOKIE, create_token(user.id), max_age=TOKEN_DAYS * 86400, httponly=True,
-                        samesite="lax")
+                        samesite="lax", secure=PRODUCTION)
     response.delete_cookie(OAUTH_STATE_COOKIE)
     return response
 

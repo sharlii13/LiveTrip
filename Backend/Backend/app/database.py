@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # SQLite for quick hackathon setup
-DATABASE_URL = "sqlite:///./hackathon_travel.db"
+DATABASE_URL = os.getenv("LIVETRIP_DATABASE_URL", "sqlite:///./hackathon_travel.db")  # production: on the disk that persists
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

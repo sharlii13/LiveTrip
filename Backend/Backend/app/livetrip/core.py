@@ -21,11 +21,22 @@ TOKEN_DAYS = 14
 _PBKDF2_ROUNDS = 200_000
 
 
+PRODUCTION = os.getenv("LIVETRIP_ENV") == "production"
+
+
+def public_url() -> str:
+    """The site's address as browsers see it (Render provides RENDER_EXTERNAL_URL; a custom domain sets PUBLIC_APP_URL)."""
+    url = os.getenv("PUBLIC_APP_URL") or os.getenv("RENDER_EXTERNAL_URL") or "http://localhost:5173"
+    return url.rstrip("/")
+
+
 def _secret_key() -> str:
     """LIVETRIP_SECRET_KEY, or a random key kept in a git-ignored file so sessions survive restarts."""
     key = os.getenv("LIVETRIP_SECRET_KEY")
     if key:
         return key
+    if os.getenv("LIVETRIP_ENV") == "production":  # a file wouldn't survive a deploy: everyone would be signed out
+        raise RuntimeError("Set LIVETRIP_SECRET_KEY in production")
     path = APP_DIR / ".livetrip_secret"
     if not path.exists():
         path.write_text(secrets.token_urlsafe(48))

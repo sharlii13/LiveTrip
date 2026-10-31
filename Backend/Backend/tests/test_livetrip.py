@@ -990,3 +990,54 @@ def test_stays_sort_by_location_and_destination_suggestions(make_user, monkeypat
     assert "Pune Cantonment" not in names  # two letters: built-in list only
     names = [s["name"] for s in a.get("/api/places/suggest?q=pun").json()["suggestions"]]
     assert names.count("Pune") == 1 and "Pune Cantonment" in names
+
+
+def test_production_mode_serves_the_site_and_locks_down_the_rest(tmp_path, monkeypatch):
+    from fastapi import APIRouter, FastAPI
+    from fastapi.testclient import TestClient
+    from livetrip import core, production
+
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<html>LiveTrip</html>")
+    (tmp_path / "sw.js").write_text("// worker")
+    (tmp_path / "assets" / "app-abc.js").write_text("// app")
+    (tmp_path / "clip.mp4").write_bytes(bytes(range(100)))
+    (tmp_path.parent / "secret.txt").write_text("private")
+
+    app = FastAPI()
+    current = APIRouter()
+    current.add_api_route("/api/assistant/message", lambda: {"ok": True}, methods=["POST"])
+    current.routes[0].endpoint.__module__ = "livetrip.recommend"
+    app.include_router(current)
+    app.get("/api/sos/trigger")(lambda: {"sms": "sent"})     # an older route: must disappear
+    app.get("/health")(lambda: {"status": "ok"})
+    production.harden(app, tmp_path)
+    c = TestClient(app, raise_server_exceptions=False)
+
+    # the site: real files, and app pages for its own routes
+    assert "LiveTrip" in c.get("/").text and "LiveTrip" in c.get("/trips/5").text
+    assert c.get("/assets/app-abc.js").headers["cache-control"].endswith("immutable")
+    assert c.get("/sw.js").headers["cache-control"] == "no-cache"
+    assert c.get("/assets/missing.js").status_code == 404
+    assert c.get("/..%2fsecret.txt").status_code == 404 and "private" not in c.get("/..%2fsecret.txt").text
+    # locked down
+    assert c.get("/health").json() == {"status": "ok"}
+    assert c.get("/api/sos/trigger").status_code == 404
+    assert "swagger" not in c.get("/docs").text.lower()  # just the app page now
+    assert c.get("/openapi.json").status_code == 404
+    # video parts, as iPhones ask for them
+    part = c.get("/clip.mp4", headers={"Range": "bytes=10-19"})
+    assert part.status_code == 206 and part.content == bytes(range(10, 20))
+    assert part.headers["content-range"] == "bytes 10-19/100"
+    assert c.get("/clip.mp4", headers={"Range": "bytes=-5"}).content == bytes(range(95, 100))
+    assert c.get("/clip.mp4", headers={"Range": "bytes=500-"}).status_code == 416
+    # rate limit on an expensive call
+    codes = [c.post("/api/assistant/message").status_code for _ in range(21)]
+    assert codes[:20] == [200] * 20 and codes[20] == 429
+
+    # a production server without a secret key refuses to start
+    monkeypatch.setenv("LIVETRIP_ENV", "production")
+    monkeypatch.delenv("LIVETRIP_SECRET_KEY")
+    import pytest
+    with pytest.raises(RuntimeError):
+        core._secret_key()

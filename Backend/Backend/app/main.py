@@ -203,7 +203,9 @@ app = FastAPI(
 # ✅ CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
+    # production: the site and API share one address, so no other website may call the API with a visitor's cookies
+    allow_origins=[os.getenv("PUBLIC_APP_URL") or os.getenv("RENDER_EXTERNAL_URL") or ""]
+    if os.getenv("LIVETRIP_ENV") == "production" else [
         "http://localhost:3000", 
         "http://localhost:5173", 
         "http://localhost:8000",
@@ -762,6 +764,12 @@ async def process_chatbot_message(message: str, user_id: Optional[int] = None):
             "confidence": 0.0,
             "error": str(e)
         }
+
+# Production: serve the website too, and expose only what it uses (keep this after every route)
+if os.getenv("LIVETRIP_ENV") == "production":
+    from livetrip.production import harden
+    harden(app)
+
 
 # ✅ Run configuration
 if __name__ == "__main__":

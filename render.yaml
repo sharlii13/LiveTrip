@@ -1,0 +1,26 @@
+# Render Blueprint for LiveTrip: see DEPLOY.md
+services:
+  - type: web
+    name: livetrip
+    runtime: docker
+    plan: starter          # disks need a paid instance; the free tier would lose every trip and photo on each deploy
+    region: singapore      # the closest Render region to India
+    branch: feature/livetrip-features
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    disk:
+      name: livetrip-data
+      mountPath: /data     # the database and uploaded photos
+      sizeGB: 1
+    envVars:
+      - key: LIVETRIP_SECRET_KEY
+        generateValue: true
+      # Render asks for these when you create the Blueprint; they stay in Render, never in the repository
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
