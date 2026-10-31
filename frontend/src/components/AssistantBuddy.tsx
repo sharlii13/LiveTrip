@@ -17,6 +17,7 @@ const HINTS: Record<string, string> = {
   relaxed: "Too packed? I can thin the day out for you.",
   optimise: "I'll reorder the stops so you spend less time travelling.",
   late: "Running late? Tell me how much and I'll shift everything.",
+  install: "Add LiveTrip to your home screen or desktop, like a regular app.",
   start: "Early bird or late riser? Pick when the day starts and I'll re-time every stop.",
   weather: "I'll check if rain spoils any outdoor stops and suggest indoor ones.",
   stays: "I'll look for places to stay close to your stops.",

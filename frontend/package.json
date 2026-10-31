@@ -8,7 +8,8 @@
     "build": "vite build",
     "start": "vite",
     "preview": "vite preview",
-    "check": "tsc"
+    "check": "tsc",
+    "test:sw": "node --test tests/sw.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

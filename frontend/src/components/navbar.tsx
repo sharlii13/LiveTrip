@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import LiveTripLogo from "@/components/LiveTripLogo";
+import InstallAppButton from "@/components/InstallAppButton";
 import { LANGUAGES, currentLanguage, setLanguage } from "@/lib/translate";
 import { useState, useEffect } from "react";
 import {
@@ -122,6 +123,8 @@ export default function Navbar() {
             <Link to="/wishlist" title="Saved places" data-testid="button-favorites">
               <Heart className="w-5 h-5 text-foreground hover:text-primary transition-colors duration-200 hover:scale-110" />
             </Link>
+
+            <InstallAppButton />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
