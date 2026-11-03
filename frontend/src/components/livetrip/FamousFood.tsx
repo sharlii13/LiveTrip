@@ -7,8 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api, Place, Slot } from "@/lib/livetrip";
 
 interface Spot extends Place { known_for: string | null }
-interface Nearby { spots: Spot[]; veg_only: boolean; note: string }
-interface Dishes { dishes: { dish: string; veg: boolean; about: string }[]; spots: Spot[]; unavailable: boolean }
+interface Dishes { dishes: { dish: string; veg: boolean; about: string }[]; spots: Spot[]; veg_only: boolean; unavailable: boolean; note?: string }
 
 const compact = new Intl.NumberFormat(undefined, { notation: "compact" });
 
@@ -28,26 +27,20 @@ export default function FamousFood({ slot, city, diet, onEatHere }: {
 }) {
   const calm = useReducedMotion();
   const [open, setOpen] = useState(false);
-  const [nearby, setNearby] = useState<Nearby | null>(null);  // fast: the famous eateries around this stop
-  const [extra, setExtra] = useState<Dishes | null>(null);     // slow: the AI's dishes, and what each eatery is known for
-  const [error, setError] = useState<string | null>(null);
+  const [extra, setExtra] = useState<Dishes | null>(null);  // the AI's dishes, and the eateries famous for them
 
   const { latitude, longitude } = slot.activity.location;
   const query = new URLSearchParams({ lat: String(latitude), lng: String(longitude), city, diet: diet || "any" });
   const loadDishes = () => {
     setExtra(null);
     api<Dishes>(`/api/recommendations/famous-food/dishes?${query}`)
-      .then(setExtra).catch(() => setExtra({ dishes: [], spots: [], unavailable: true }));
+      .then(setExtra).catch(() => setExtra({ dishes: [], spots: [], veg_only: false, unavailable: true }));
   };
   const toggle = () => {
     setOpen((o) => !o);
-    if (nearby || open) return;
-    setError(null);
-    // both at once: the eateries show as soon as they're found, the dishes join when the AI answers
-    api<Nearby>(`/api/recommendations/famous-food?${query}`).then(setNearby).catch((e) => setError((e as Error).message));
-    loadDishes();
+    if (!extra && !open) loadDishes();
   };
-  const spots = extra?.spots.length ? extra.spots : nearby?.spots ?? [];
+  const spots = extra?.spots ?? [];
   const dishes = extra?.dishes ?? [];
 
   const item = (i: number) => (calm ? {} : {
@@ -67,20 +60,21 @@ export default function FamousFood({ slot, city, diet, onEatHere }: {
                       initial={calm ? false : { height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
                       exit={calm ? undefined : { height: 0, opacity: 0 }} transition={{ duration: 0.25 }}>
             <div className="mt-2 rounded-lg border border-orange-200 dark:border-orange-900 bg-orange-50/60 dark:bg-orange-950/20 p-3 space-y-3 text-sm">
-              {error && <p className="text-destructive">{error}</p>}
-              {!nearby && !error && <div className="space-y-2"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>}
-              {nearby && (
+              {!extra && (
+                <div className="space-y-2" role="status">
+                  <p className="text-xs text-muted-foreground flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-orange-500 animate-pulse" />Asking our food guide about local favourites...
+                  </p>
+                  <Skeleton className="h-10 w-full" /><Skeleton className="h-12 w-full" />
+                </div>
+              )}
+              {extra && (
                 <>
                   <section>
                     <h4 className="font-semibold mb-1.5 flex items-center gap-2">
-                      <span>Must-try in <span className="capitalize">{city}</span></span>{nearby.veg_only && <Badge variant="outline" className="border-green-600 text-green-700">Veg only</Badge>}
+                      <span>Must-try in <span className="capitalize">{city}</span></span>{extra.veg_only && <Badge variant="outline" className="border-green-600 text-green-700">Veg only</Badge>}
                     </h4>
-                    {!extra && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-2" role="status">
-                        <Sparkles className="w-3.5 h-3.5 text-orange-500 animate-pulse" />Asking our food guide about local favourites...
-                      </p>
-                    )}
-                    {extra?.unavailable && (
+                    {extra.unavailable && (
                       <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
                         The food guide is busy right now, so local dishes couldn't load.
                         <Button size="sm" variant="outline" className="h-7" onClick={loadDishes}>Try again</Button>
@@ -98,9 +92,9 @@ export default function FamousFood({ slot, city, diet, onEatHere }: {
                       </ul>
                     )}
                   </section>
-                  <section>
-                    <h4 className="font-semibold mb-1.5">Famous spots near this stop</h4>
-                    {spots.length === 0 && <p className="text-muted-foreground">No well-known food spots found within 10 km.</p>}
+                  {!extra.unavailable && <section>
+                    <h4 className="font-semibold mb-1.5">Where to eat these near this stop</h4>
+                    {spots.length === 0 && <p className="text-muted-foreground">No eatery famous for these dishes found within 10 km.</p>}
                     <ul className="space-y-2">
                       {spots.map((s, i) => (
                         <motion.li key={s.place_id} layout={!calm} {...item(i)}
@@ -128,8 +122,8 @@ export default function FamousFood({ slot, city, diet, onEatHere }: {
                         </motion.li>
                       ))}
                     </ul>
-                  </section>
-                  <p className="text-[11px] text-muted-foreground">{nearby.note}</p>
+                  </section>}
+                  {extra.note && <p className="text-[11px] text-muted-foreground">{extra.note}</p>}
                 </>
               )}
             </div>

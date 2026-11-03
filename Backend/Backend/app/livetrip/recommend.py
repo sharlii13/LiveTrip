@@ -43,14 +43,19 @@ def _rank(places: List[Dict], origin: Tuple[float, float], boosts: Dict[str, flo
     return sorted(out, key=lambda p: p["score"], reverse=True)
 
 
+CAFE_TYPES = {"cafe", "coffee_shop", "tea_house", "cat_cafe", "dog_cafe", "internet_cafe"}
+
+
 async def restaurants(lat: float, lng: float, diet: str = "any", budget: str = "medium", radius_km: float = 3,
                       family: bool = False, pets: bool = False, boosts: Optional[Dict] = None,
                       kind: str = "restaurant") -> List[Dict]:
-    words = [w for w in (BUDGET_WORDS.get(budget, ""), "pure vegetarian" if diet == "vegetarian" else
+    cafe = kind == "cafe"
+    words = [w for w in (BUDGET_WORDS.get(budget, ""), ("vegetarian" if cafe else "pure vegetarian") if diet == "vegetarian" else
                          "vegan" if diet == "vegan" else "", "family friendly" if family else "",
                          "pet friendly" if pets else "") if w]
-    found = await search_places(" ".join(words + ["cafe" if kind == "cafe" else "restaurant"]), near=(lat, lng), limit=20)
-    found = [p for p in found if p["category"] == "food"]
+    found = await search_places(" ".join(words + ["cafe" if cafe else "restaurant"]), near=(lat, lng), limit=20)
+    # Google's text search answers "vegetarian cafe" with restaurants too; a cafe is what Google types as one
+    found = [p for p in found if p["category"] == "food" and (not cafe or CAFE_TYPES & set(p.get("types") or []))]
     ranked = _rank(found, (lat, lng), boosts or {})
     return [p for p in ranked if p["distance_km"] <= radius_km][:10]
 
@@ -68,8 +73,8 @@ FOOD_PROMPT = """You are a local food guide for travellers. For "{city}", list u
 a food lover should try{veg}. For each dish name up to 2 specific eateries in {city} famous for it: long-running local \
 institutions or well-known viral spots. Only name eateries you are confident really exist; leave "spots" empty otherwise. \
 A dish with egg, meat or fish is not vegetarian ("veg": false).
-These eateries are near the traveller: {nearby}. For each one you genuinely know, give the dish or item it is famous \
-for; leave out the ones you don't know.
+These eateries are near the traveller: {nearby}. For each one you genuinely know to be famous for one of your listed \
+dishes, give that dish exactly as you named it; leave out the rest.
 Answer with JSON only: {{"dishes": [{{"dish": "...", "veg": true, "about": "at most 15 words", "spots": ["..."]}}], \
 "known_for": {{"eatery name exactly as given": "dish"}}}}"""
 FOOD_TTL_S = 24 * 3600
@@ -135,25 +140,23 @@ async def _nearby_food(lat: float, lng: float, city: str, veg: bool) -> List[Dic
     return _rank_spots([_spot(p, (lat, lng)) for p in found if p["category"] == "food"])
 
 
-@router.get("/recommendations/famous-food")
-async def famous_food(lat: float, lng: float, city: str, diet: str = "any"):
-    """Fast part: the famous, most-reviewed eateries near this stop (one cached place search)."""
-    veg = diet.lower() in VEG_WORDS
-    return {"spots": await _nearby_food(lat, lng, city, veg), "veg_only": veg,
-            "note": "Places, ratings and distances come from Google Places; dishes are suggested by AI."}
+def _serves_listed(known_for: Optional[str], dishes: List[Dict]) -> bool:
+    """Is the eatery famous for one of the listed dishes ("Misal" matches "Misal pav")?"""
+    k = (known_for or "").lower()
+    return bool(k) and any(d["dish"].lower() in k or k in d["dish"].lower() for d in dishes)
 
 
 @router.get("/recommendations/famous-food/dishes")
 async def famous_food_dishes(lat: float, lng: float, city: str, diet: str = "any"):
-    """Slow part: the city's signature dishes, what the nearby eateries are famous for, and the AI's famous eateries
-    for each dish, kept only if Google Places finds them near this stop."""
+    """The city's signature dishes and, near this stop, only the eateries famous for one of them: the AI's named
+    eateries (kept only if Google Places finds them) and the nearby ones the AI knows for a listed dish."""
     veg = diet.lower() in VEG_WORDS
     origin = (lat, lng)
     nearby = await _nearby_food(lat, lng, city, veg)
     guide = await food_guide(city, veg, [p["name"] for p in nearby])
     if guide is None:
-        return {"dishes": [], "spots": nearby, "veg_only": veg, "unavailable": True}
-    named = [(d["dish"], s) for d in guide["dishes"] for s in d["spots"]][:6]
+        return {"dishes": [], "spots": [], "veg_only": veg, "unavailable": True}
+    named = [(d["dish"], s) for d in guide["dishes"] for s in d["spots"]][:12]
 
     async def look_up(dish: str, spot: str) -> Optional[Dict]:
         found = await search_places(f"{spot}, {city}", near=origin, limit=1)
@@ -162,8 +165,10 @@ async def famous_food_dishes(lat: float, lng: float, city: str, diet: str = "any
 
     looked = await asyncio.gather(*[look_up(*n) for n in named], return_exceptions=True)
     enriched = [{**p, "known_for": guide["known_for"].get(p["name"].strip().lower())} for p in nearby]
+    spots = [p for p in [p for p in looked if isinstance(p, dict)] + enriched if _serves_listed(p["known_for"], guide["dishes"])]
     return {"dishes": [{k: d[k] for k in ("dish", "veg", "about")} for d in guide["dishes"]],
-            "spots": _rank_spots([p for p in looked if isinstance(p, dict)] + enriched), "veg_only": veg, "unavailable": False}
+            "spots": _rank_spots(spots), "veg_only": veg, "unavailable": False,
+            "note": "Places, ratings and distances come from Google Places; dishes are suggested by AI."}
 
 
 STAY_SORTS = {

@@ -1056,7 +1056,7 @@ def test_famous_food_follows_diet_and_drops_made_up_eateries(client, monkeypatch
         return {"dishes": [{"dish": "Chole bhature", "veg": True, "about": "Spicy chickpeas", "spots": ["Raju Uncle Chole"]},
                            {"dish": "Mutton thali", "veg": False, "about": "Kolhapuri style", "spots": ["Ghost Mutton House"]},
                            "junk"],
-                "known_for": {first[0]: "Misal pav", "Nowhere Cafe": "Coffee"}}
+                "known_for": {first[0]: "Chole Bhature", first[1]: "Misal pav", "Nowhere Cafe": "Coffee"}}
 
     async def search(query, near=None, limit=20):
         if query.startswith("Ghost Mutton"):  # Google finds something else: the AI's name is not trusted
@@ -1066,21 +1066,19 @@ def test_famous_food_follows_diet_and_drops_made_up_eateries(client, monkeypatch
     monkeypatch.setattr(recommend, "search_places", search)
     q = {"lat": 18.52, "lng": 73.85, "city": "Pune"}
 
-    # the fast part needs no AI at all
-    fast = client.get("/api/recommendations/famous-food", params={**q, "diet": "vegetarian"}).json()
-    assert fast["spots"] and fast["veg_only"] and all(s["known_for"] is None and s["distance_km"] <= 10 for s in fast["spots"])
-    first.append(fast["spots"][0]["name"])
+    first.extend(p["name"] for p in asyncio.run(recommend._nearby_food(q["lat"], q["lng"], "Pune", True))[:2])
 
-    # no AI key: the dishes part says so, and still returns the nearby eateries
+    # no AI key: the panel says so, and lists no eateries it can't tie to a dish
     slow = client.get("/api/recommendations/famous-food/dishes", params={**q, "diet": "vegetarian"}).json()
-    assert slow["unavailable"] and slow["dishes"] == [] and slow["spots"]
+    assert slow["unavailable"] and slow["dishes"] == [] and slow["spots"] == []
 
     monkeypatch.setattr(ai_assistant, "ask_json", fake_ask)
     veg = client.get("/api/recommendations/famous-food/dishes", params={**q, "diet": "vegetarian"}).json()
     assert not veg["unavailable"] and [d["dish"] for d in veg["dishes"]] == ["Chole bhature"]
     assert "vegetarian dishes only" in asked[0] and first[0] in asked[0]  # nearby names go to the AI
     assert veg["spots"][0]["name"] == "Raju Uncle Chole" and veg["spots"][0]["known_for"] == "Chole bhature"
-    assert {s["name"]: s["known_for"] for s in veg["spots"]}[first[0]] == "Misal pav"
+    # only eateries famous for a listed dish: misal pav isn't on the veg list, and unknown ones are dropped
+    assert {s["name"]: s["known_for"] for s in veg["spots"]} == {"Raju Uncle Chole": "Chole bhature", first[0]: "Chole Bhature"}
 
     both = client.get("/api/recommendations/famous-food/dishes", params={**q, "diet": "non-vegetarian"}).json()
     assert [d["veg"] for d in both["dishes"]] == [True, False]
