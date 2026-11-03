@@ -421,6 +421,9 @@ export default function TripDetail() {
                           previousTime={changed?.was.get(s.item_id)}
                           moved={changed?.moved.has(s.item_id)}
                           changeDelay={index * 90}
+                          diet={trip.user_preferences?.food}
+                          onEatHere={movable ? (place) => applyOps([{ op: "replace", item_id: s.item_id, place }],
+                            `${s.activity.name.split(" ")[0]} is now at ${place.name}`) : undefined}
                           number={visitNumbers.get(s.item_id)}
                           city={trip.destination}
                           selected={selectedId === s.item_id}

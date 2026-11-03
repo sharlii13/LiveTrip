@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api, Slot } from "@/lib/livetrip";
+import { api, Place, Slot } from "@/lib/livetrip";
+import FamousFood from "@/components/livetrip/FamousFood";
 
 export interface PlaceInfo {
   article: string | null;
@@ -98,9 +99,12 @@ interface Props {
   previousTime?: string;  // set for a moment after the stop's time changed
   moved?: boolean;        // set for a moment after the stop was moved
   changeDelay?: number;   // ms, so changes ripple down the day
+  diet?: string;          // the trip's food preference, for the meal cards' famous food
+  onEatHere?: (place: Place) => void;
 }
 
-export default function PlaceCard({ slot, number, city, selected, onSelect, actions, dragProps, moveControls, previousTime, moved, changeDelay = 0 }: Props) {
+export default function PlaceCard({ slot, number, city, selected, onSelect, actions, dragProps, moveControls, previousTime, moved,
+                                    changeDelay = 0, diet, onEatHere }: Props) {
   const info = usePlaceInfo(slot, city);
   const [open, setOpen] = useState(false);
   const a = slot.activity;
@@ -176,6 +180,7 @@ export default function PlaceCard({ slot, number, city, selected, onSelect, acti
               <Button size="sm" variant="outline" className="ml-auto" onClick={() => setOpen(true)}>See details</Button>
             )}
           </div>
+          {slot.kind === "meal" && <FamousFood slot={slot} city={city} diet={diet} onEatHere={onEatHere} />}
         </div>
       </CardContent>
 

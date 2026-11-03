@@ -293,3 +293,32 @@ async def _run(handlers: Dict[str, Handler], name: str, args: Any, out: Dict[str
     if result.get("proposal"):
         out["proposal"] = result.pop("proposal")
     return result
+
+
+async def ask_json(prompt: str) -> Any:
+    """A one-off question answered as JSON, on the same Gemini model chain. Raises Unavailable."""
+    # shortcut: Gemini only; route through Claude too if ANTHROPIC_API_KEY ever becomes the only key
+    global _gemini_last_good
+    if not os.getenv("GEMINI_API_KEY"):
+        raise Unavailable("no Gemini key")
+    async with httpx.AsyncClient(timeout=15) as client:
+        for model in _gemini_models():
+            try:
+                r = await client.post(GEMINI_URL.format(model=model), headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"]},
+                                      json={"contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                                            "generationConfig": {"responseMimeType": "application/json", "maxOutputTokens": 2048}})
+            except httpx.HTTPError:
+                r = None
+            if r is None or r.status_code in (404, 429, 500, 503):
+                _gemini_resting[model] = time.monotonic() + GEMINI_COOLDOWN_S
+                continue
+            if r.status_code != 200:
+                raise Unavailable(f"HTTP {r.status_code}")
+            parts = ((r.json().get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
+            try:
+                out = json.loads("".join(p.get("text", "") for p in parts if not p.get("thought")))
+            except ValueError as e:
+                raise Unavailable("answer was not JSON") from e
+            _gemini_last_good = model
+            return out
+    raise Unavailable("no Gemini model answered")

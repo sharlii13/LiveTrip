@@ -1041,3 +1041,42 @@ def test_production_mode_serves_the_site_and_locks_down_the_rest(tmp_path, monke
     import pytest
     with pytest.raises(RuntimeError):
         core._secret_key()
+
+
+def test_famous_food_follows_diet_and_drops_made_up_eateries(client, monkeypatch):
+    from livetrip import ai_assistant, recommend
+    from conftest import async_fake_places
+    recommend._dish_cache.clear()
+    real_ask = ai_assistant.ask_json
+    asked = []
+
+    async def fake_ask(prompt):
+        asked.append(prompt)
+        return [{"dish": "Chole bhature", "veg": True, "about": "Spicy chickpeas", "spots": ["Raju Uncle Chole"]},
+                {"dish": "Mutton thali", "veg": False, "about": "Kolhapuri style", "spots": ["Ghost Mutton House"]},
+                "junk"]
+
+    async def search(query, near=None, limit=20):
+        if query.startswith("Ghost Mutton"):  # Google finds something else: the AI's name is not trusted
+            return [dict((await async_fake_places("Sharma Snacks, Pune", near, 1))[0])]
+        return await async_fake_places(query, near, limit)
+
+    monkeypatch.setattr(ai_assistant, "ask_json", fake_ask)
+    monkeypatch.setattr(recommend, "search_places", search)
+    q = {"lat": 18.52, "lng": 73.85, "city": "Pune"}
+
+    veg = client.get("/api/recommendations/famous-food", params={**q, "diet": "vegetarian"}).json()
+    assert [d["dish"] for d in veg["dishes"]] == ["Chole bhature"] and veg["veg_only"]
+    assert "vegetarian dishes only" in asked[0]
+    assert veg["spots"][0]["name"] == "Raju Uncle Chole" and veg["spots"][0]["known_for"] == "Chole bhature"
+    assert all(s["distance_km"] <= 10 for s in veg["spots"])
+
+    both = client.get("/api/recommendations/famous-food", params={**q, "diet": "non-vegetarian"}).json()
+    assert [d["veg"] for d in both["dishes"]] == [True, False]
+    assert not any(s["name"] == "Sharma Snacks" for s in both["spots"])
+
+    # no AI key: no dishes, but the most famous food places nearby still come back
+    recommend._dish_cache.clear()
+    monkeypatch.setattr(ai_assistant, "ask_json", real_ask)
+    plain = client.get("/api/recommendations/famous-food", params={**q, "diet": "vegetarian"}).json()
+    assert plain["dishes"] == [] and plain["spots"] and all(s["known_for"] is None for s in plain["spots"])
