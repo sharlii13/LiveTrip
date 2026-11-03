@@ -53,11 +53,16 @@ async def restaurants(lat: float, lng: float, diet: str = "any", budget: str = "
     words = [w for w in (BUDGET_WORDS.get(budget, ""), ("vegetarian" if cafe else "pure vegetarian") if diet == "vegetarian" else
                          "vegan" if diet == "vegan" else "", "family friendly" if family else "",
                          "pet friendly" if pets else "") if w]
-    found = await search_places(" ".join(words + ["cafe" if cafe else "restaurant"]), near=(lat, lng), limit=20)
-    # Google's text search answers "vegetarian cafe" with restaurants too; a cafe is what Google types as one
-    found = [p for p in found if p["category"] == "food" and (not cafe or CAFE_TYPES & set(p.get("types") or []))]
-    ranked = _rank(found, (lat, lng), boosts or {})
-    return [p for p in ranked if p["distance_km"] <= radius_km][:10]
+    async def near(query: str) -> List[Dict]:
+        found = await search_places(query, near=(lat, lng), limit=20)
+        # Google's text search answers "vegetarian cafe" with restaurants too; a cafe is what's typed as one
+        found = [p for p in found if p["category"] == "food" and (not cafe or CAFE_TYPES & set(p.get("types") or []))]
+        return [p for p in _rank(found, (lat, lng), boosts or {}) if p["distance_km"] <= radius_km][:10]
+
+    out = await near(" ".join(words + ["cafe" if cafe else "restaurant"]))
+    if cafe and not out and words:  # few cafes are tagged vegetarian (OpenStreetMap): list all nearby cafes
+        out = await near("cafe")
+    return out
 
 
 @router.get("/recommendations/restaurants")

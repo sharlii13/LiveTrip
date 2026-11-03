@@ -457,6 +457,8 @@ def test_recommendations(make_user, client):
     assert food and all(p["category"] == "food" for p in food)
     cafes = client.get(f"/api/recommendations/restaurants?lat={lat}&lng={lng}&kind=cafe").json()["results"]
     assert cafes and all("cafe" in p["types"] for p in cafes)
+    veg_cafes = client.get(f"/api/recommendations/restaurants?lat={lat}&lng={lng}&kind=cafe&diet=vegetarian").json()["results"]
+    assert veg_cafes and all("cafe" in p["types"] for p in veg_cafes)
     stays = a.get(f"/api/recommendations/stays?trip_id={itin['id']}&budget=low").json()
     assert stays["results"] and "not live" in stays["note"]
     mood = client.get(f"/api/recommendations/mood?mood=relaxed&lat={lat}&lng={lng}&minutes_left=90").json()
