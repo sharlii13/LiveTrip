@@ -95,9 +95,12 @@ interface Props {
   actions: ReactNode;
   dragProps?: React.HTMLAttributes<HTMLDivElement> & { draggable?: boolean };
   moveControls?: ReactNode;
+  previousTime?: string;  // set for a moment after the stop's time changed
+  moved?: boolean;        // set for a moment after the stop was moved
+  changeDelay?: number;   // ms, so changes ripple down the day
 }
 
-export default function PlaceCard({ slot, number, city, selected, onSelect, actions, dragProps, moveControls }: Props) {
+export default function PlaceCard({ slot, number, city, selected, onSelect, actions, dragProps, moveControls, previousTime, moved, changeDelay = 0 }: Props) {
   const info = usePlaceInfo(slot, city);
   const [open, setOpen] = useState(false);
   const a = slot.activity;
@@ -111,7 +114,7 @@ export default function PlaceCard({ slot, number, city, selected, onSelect, acti
       id={`stop-${slot.item_id}`}
       onClick={onSelect}
       {...dragProps}
-      className={`transition-shadow ${selected ? "ring-2 ring-primary shadow-lg" : "hover:shadow-md"} ${slot.status === "skipped" ? "opacity-50" : ""}`}
+      className={`transition-shadow ${selected ? "ring-2 ring-primary shadow-lg" : "hover:shadow-md"} ${slot.status === "skipped" ? "opacity-50" : ""} ${moved ? "card-moved" : ""}`}
     >
       <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row gap-4">
         <div className="sm:w-48 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -148,7 +151,14 @@ export default function PlaceCard({ slot, number, city, selected, onSelect, acti
             </div>
           </div>
           <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-3">
-            <span className="flex items-center font-medium text-foreground"><Clock className="w-3 h-3 mr-1" />{slot.start_time}–{slot.end_time}</span>
+            <span className="flex items-center font-medium text-foreground">
+              <Clock className="w-3 h-3 mr-1" />
+              {previousTime && <s className="time-old mr-1.5 font-normal text-muted-foreground" style={{ animationDelay: `${changeDelay}ms` }}>{previousTime}</s>}
+              {/* the key restarts the flash on every change */}
+              <span key={previousTime ?? "now"} className={previousTime ? "time-flash rounded px-1 -mx-1" : ""} style={{ animationDelay: `${changeDelay}ms` }}>
+                {slot.start_time}–{slot.end_time}
+              </span>
+            </span>
             {slot.travel_min > 0 && <span>{slot.travel_min} min travel</span>}
           </p>
           {info === undefined && slot.kind === "visit" && <Skeleton className="h-10 w-full" />}

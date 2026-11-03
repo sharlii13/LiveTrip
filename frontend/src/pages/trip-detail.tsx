@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   AlertTriangle, CheckCircle2, CloudRain, Download, Lock, MapPin, RefreshCw, SkipForward,
   Star, Sun, Unlock, Camera, Users, Bed, Bookmark, Route as RouteIcon, ChevronUp, ChevronDown,
@@ -68,6 +69,14 @@ export default function TripDetail() {
   const [day, setDay] = useState("1");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [dragId, setDragId] = useState<number | null>(null);
+  // what the last edit changed, shown for a moment: each stop's old time, and the stops that were moved
+  const [changed, setChanged] = useState<{ was: Map<number, string>; moved: Set<number> } | null>(null);
+  useEffect(() => {
+    if (!changed) return;
+    const t = window.setTimeout(() => setChanged(null), 3500);
+    return () => window.clearTimeout(t);
+  }, [changed]);
+  const calm = useReducedMotion();
 
   const load = async () => {
     try {
@@ -112,11 +121,23 @@ export default function TripDetail() {
       toast({ title: message });
     });
 
+  /** Remembers which stops got new times between two versions of the trip, so their cards can animate. */
+  const showChanges = (before: Trip | null, after: Trip, moved: number[] = []) => {
+    const timesOf = (t: Trip) => new Map(t.days.flatMap((d) => d.time_slots.map((s) => [s.item_id, `${s.start_time}–${s.end_time}`] as const)));
+    const old = before ? timesOf(before) : new Map<number, string>();
+    const was = new Map<number, string>();
+    timesOf(after).forEach((time, item) => { if (old.has(item) && old.get(item) !== time) was.set(item, old.get(item)!); });
+    setChanged({ was, moved: new Set(moved) });
+    return was.size;
+  };
+
   const setStart = (day: number, time: string) =>
     run(`start-${day}`, async () => {
-      setTrip(await api<Trip>(`/api/itinerary/${id}/day-start`, { method: "POST", json: { day, time } }));
+      const after = await api<Trip>(`/api/itinerary/${id}/day-start`, { method: "POST", json: { day, time } });
+      const n = showChanges(trip, after);
+      setTrip(after);
       setDayStart(({ [day]: _, ...rest }) => rest);
-      toast({ title: `Day ${day} now starts at ${time}`, description: "Every stop has been re-timed." });
+      toast({ title: `Day ${day} now starts at ${time}`, description: n ? `${n} stop${n === 1 ? "" : "s"} moved to new times.` : "No times needed to change." });
     });
 
   const checkIn = (slot: Slot) =>
@@ -216,14 +237,27 @@ export default function TripDetail() {
     document.getElementById(`stop-${itemId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
-  const reorder = (dayNum: number, order: number[], message: string) =>
-    applyOps([{ op: "reorder", day: dayNum, order }], message);
+  const nameOf = (d: Trip["days"][number], itemId: number) => d.time_slots.find((s) => s.item_id === itemId)?.activity.name ?? "Stop";
+
+  /** Reorders a day, then confirms what moved and where it landed. */
+  const reorder = (dayNum: number, order: number[], moved: number[], title: string) =>
+    run("apply", async () => {
+      const after = await api<Trip>(`/api/itinerary/${id}/apply`, { method: "POST", json: { ops: [{ op: "reorder", day: dayNum, order }], expected_version: trip.version } });
+      showChanges(trip, after, moved);
+      setTrip(after);
+      const slots = after.days.find((x) => x.day === dayNum)?.time_slots ?? [];
+      const landed = moved.map((m) => slots.find((s) => s.item_id === m)).filter((s): s is Slot => !!s);
+      toast({ title, description: landed.map((s) => `${s.activity.name} now at ${s.start_time}`).join(" · ") || undefined });
+    });
 
   const moveTo = (d: Trip["days"][number], fromId: number, toId: number) => {
     const ids = d.time_slots.map((s) => s.item_id);
     const without = ids.filter((x) => x !== fromId);
-    without.splice(without.indexOf(toId) + (ids.indexOf(fromId) < ids.indexOf(toId) ? 1 : 0), 0, fromId);
-    if (without.join() !== ids.join()) reorder(d.day, without, "Order updated");
+    const later = ids.indexOf(fromId) < ids.indexOf(toId);
+    without.splice(without.indexOf(toId) + (later ? 1 : 0), 0, fromId);
+    if (without.join() !== ids.join()) {
+      reorder(d.day, without, [fromId], `Moved ${nameOf(d, fromId)} ${later ? "after" : "before"} ${nameOf(d, toId)}`);
+    }
   };
 
   const moveBy = (d: Trip["days"][number], itemId: number, delta: number) => {
@@ -231,8 +265,9 @@ export default function TripDetail() {
     const i = ids.indexOf(itemId);
     const j = i + delta;
     if (j < 0 || j >= ids.length) return;
+    const other = ids[j];
     [ids[i], ids[j]] = [ids[j], ids[i]];
-    reorder(d.day, ids, "Order updated");
+    reorder(d.day, ids, [itemId, other], `Swapped ${nameOf(d, itemId)} and ${nameOf(d, other)}`);
   };
 
   const slotActions = (s: Slot) => (
@@ -375,12 +410,17 @@ export default function TripDetail() {
                   {d.time_slots.map((s, index) => {
                     const movable = s.status === "planned" && !s.locked;
                     return (
-                      <div key={s.item_id}
+                      // layout: a reordered card slides to its new place instead of jumping
+                      <motion.div key={s.item_id} layout={calm ? false : "position"}
+                           transition={{ type: "spring", stiffness: 380, damping: 32 }}
                            className={dragId !== null && dragId !== s.item_id ? "rounded-lg outline-dashed outline-2 outline-transparent hover:outline-primary/40" : ""}
                            onDragOver={(e) => { if (dragId !== null) e.preventDefault(); }}
                            onDrop={(e) => { e.preventDefault(); if (dragId !== null && dragId !== s.item_id) moveTo(d, dragId, s.item_id); setDragId(null); }}>
                         <PlaceCard
                           slot={s}
+                          previousTime={changed?.was.get(s.item_id)}
+                          moved={changed?.moved.has(s.item_id)}
+                          changeDelay={index * 90}
                           number={visitNumbers.get(s.item_id)}
                           city={trip.destination}
                           selected={selectedId === s.item_id}
@@ -400,7 +440,7 @@ export default function TripDetail() {
                             </span>
                           ) : undefined}
                         />
-                      </div>
+                      </motion.div>
                     );
                   })}
                 </TabsContent>
