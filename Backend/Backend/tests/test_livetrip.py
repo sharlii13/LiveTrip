@@ -1109,3 +1109,13 @@ def test_google_photos_fill_in_only_when_wikimedia_has_none(client, monkeypatch)
     # the photo endpoint only ever fetches Google photo names, never another path with the key
     assert client.get("/api/places/photo", params={"name": "places/abc/../../v1/x"}).status_code == 400
     placeinfo._cache.clear()
+
+
+def test_photo_search_needs_the_places_own_words():
+    from livetrip.placeinfo import _old_names, names_place
+    assert _old_names("Ahilyanagar Fort, Ahilyanagar") == "ahmednagar Fort, ahmednagar"
+    assert names_place("Ahilyanagar Fort", "Ahilyanagar", "File:Ahmednagar Fort Main Gate.jpg")  # the city's old name
+    assert not names_place("Ahilyanagar Fort", "Ahilyanagar", "File:Ahmednagar railway station.jpg")
+    assert names_place("Cavalry Tank Museum", "Ahilyanagar", "File:Cavalry Tank Museum, Ahmednagar 03.jpg")
+    assert not names_place("Shri Vishal Ganapati Mandir", "Ahilyanagar", "File:Mandir in Ahmednagar.jpg")  # one word only
+    assert not names_place("Ahilyanagar", "Ahilyanagar", "File:Ahmednagar Fort.jpg")  # nothing but the city

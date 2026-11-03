@@ -114,6 +114,40 @@ async def _nearby_photos(lat: Optional[float], lng: Optional[float], radius: int
                            "ggslimit": 20, "ggsnamespace": 6})
 
 
+# renamed cities: Commons files mostly still use the old name ("Ahmednagar Fort Main Gate.jpg")
+OLD_CITY_NAMES = {"ahilyanagar": "ahmednagar", "chhatrapati sambhajinagar": "aurangabad", "sambhajinagar": "aurangabad",
+                  "dharashiv": "osmanabad", "prayagraj": "allahabad", "gurugram": "gurgaon", "bengaluru": "bangalore",
+                  "mysuru": "mysore", "belagavi": "belgaum", "kalaburagi": "gulbarga", "puducherry": "pondicherry"}
+GENERIC_WORDS = {"the", "of", "and", "a", "shri", "shree", "sri", "jpg", "jpeg", "png"}
+
+
+def _old_names(text: str) -> str:
+    for new, old in OLD_CITY_NAMES.items():
+        text = re.sub(rf"\b{new}\b", old, text, flags=re.IGNORECASE)
+    return text
+
+
+def names_place(name: str, city: str, file_title: str) -> bool:
+    """Stricter than mentions(), for photos found by searching: the file must carry the place's own words (two of
+    them when it has two), not just the city's ("Ahmednagar railway station.jpg" is not "Ahmednagar Fort")."""
+    city_words = set(_norm(city).split()) | set(_norm(_old_names(city)).split())
+    words = {w for w in _norm(_old_names(name)).split() if len(w) > 2} - GENERIC_WORDS - city_words
+    if not words:
+        return False
+    found = set(_norm(file_title.replace("_", " ")).split())
+    return len(words & found) >= min(2, len(words))
+
+
+async def _named_photos(name: str, lat: Optional[float], lng: Optional[float], city: str) -> List[Dict]:
+    """Last resort: Commons photos found by name (with the city's old name too), for spots with no geotagged ones."""
+    query = " ".join(dict.fromkeys(_old_names(f"{name} {city}").split()))  # "... Ahmednagar Ahmednagar" said once
+    found = await _commons({"generator": "search", "gsrsearch": query, "gsrnamespace": 6, "gsrlimit": 10})
+    found = [p for p in found if names_place(name, city, _file(p))]
+    if lat is not None and lng is not None:
+        found = [p for p in found if not p["taken_at"] or haversine_km((lat, lng), tuple(p["taken_at"])) <= 5]
+    return found[:MAX_PHOTOS]
+
+
 async def _lookup(name: str, lat: Optional[float], lng: Optional[float], city: str) -> Dict:
     # the article search and the photos taken at the spot run at the same time
     title, nearby = await asyncio.gather(_find_article(name, lat, lng, city), _nearby_photos(lat, lng, 300))
@@ -140,7 +174,7 @@ async def _lookup(name: str, lat: Optional[float], lng: Optional[float], city: s
     photos = list({p["source_url"]: p for p in photos + nearby}.values())  # de-duplicated, in order
     # a lead image can show a neighbour (Makkah Masjid's is of Charminar): photos naming the place come first
     photos.sort(key=lambda p: not (mentions(name, _file(p)) or mentions(subject, _file(p))))
-    photos = photos[:MAX_PHOTOS]
+    photos = photos[:MAX_PHOTOS] or await _named_photos(name, lat, lng, city)
     return {"name": name, "article": title, "description": description, "url": url, "photos": photos,
             "source": "wikipedia" if title else ("wikimedia commons" if photos else "none")}
 
