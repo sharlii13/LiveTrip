@@ -65,33 +65,42 @@ async def recommend_restaurants(lat: float, lng: float, diet: str = "any", budge
 
 FOOD_PROMPT = """You are a local food guide for travellers. For "{city}", list up to 6 signature local dishes \
 a food lover should try{veg}. For each dish name up to 2 specific eateries in {city} famous for it: long-running local \
-institutions or well-known viral spots. Only name eateries you are confident really exist; leave "spots" empty otherwise. A dish with egg, meat or fish is \
-not vegetarian ("veg": false).
-Answer with JSON only: [{{"dish": "...", "veg": true, "about": "at most 15 words", "spots": ["..."]}}]"""
+institutions or well-known viral spots. Only name eateries you are confident really exist; leave "spots" empty otherwise. \
+A dish with egg, meat or fish is not vegetarian ("veg": false).
+These eateries are near the traveller: {nearby}. For each one you genuinely know, give the dish or item it is famous \
+for; leave out the ones you don't know.
+Answer with JSON only: {{"dishes": [{{"dish": "...", "veg": true, "about": "at most 15 words", "spots": ["..."]}}], \
+"known_for": {{"eatery name exactly as given": "dish"}}}}"""
 FOOD_TTL_S = 24 * 3600
+FOOD_RADIUS_KM = 10
 # shortcut: in-process cache, lost on restart and not shared between workers; fine for one server
-_dish_cache: Dict[Tuple[str, bool], Tuple[float, List[Dict]]] = {}
+_dish_cache: Dict[Tuple, Tuple[float, Dict]] = {}
 
 
-async def city_dishes(city: str, veg: bool) -> List[Dict]:
-    """The city's signature dishes and the eateries known for them, as the AI knows them ([] without an AI key)."""
-    key = (city.strip().lower(), veg)
+async def food_guide(city: str, veg: bool, nearby: List[str]) -> Optional[Dict]:
+    """The AI's signature dishes for the city and what nearby eateries are known for; None if the AI can't answer."""
+    key = (city.strip().lower(), veg, tuple(sorted(nearby)))
     hit = _dish_cache.get(key)
     if hit and hit[0] > time.monotonic():
         return hit[1]
     try:
-        raw = await ai_assistant.ask_json(FOOD_PROMPT.format(city=city, veg=" (vegetarian dishes only)" if veg else ""))
-    except ai_assistant.Unavailable:
-        return []  # not cached: the next tap tries again
+        raw = await asyncio.wait_for(ai_assistant.ask_json(FOOD_PROMPT.format(
+            city=city, veg=" (vegetarian dishes only)" if veg else "", nearby="; ".join(nearby) or "none")), 25)
+    except (ai_assistant.Unavailable, asyncio.TimeoutError):
+        return None  # not cached: the next tap tries again
+    raw = raw if isinstance(raw, dict) else {"dishes": raw}  # older answers were a bare list
     dishes = []
-    for d in raw if isinstance(raw, list) else []:
+    for d in raw.get("dishes") if isinstance(raw.get("dishes"), list) else []:
         if not isinstance(d, dict) or not isinstance(d.get("dish"), str) or (veg and d.get("veg") is False):
             continue
         spots = [s for s in d.get("spots") or [] if isinstance(s, str) and s.strip()][:2]
         dishes.append({"dish": d["dish"].strip(), "veg": d.get("veg") is not False,
                        "about": str(d.get("about") or "")[:120], "spots": spots})
-    _dish_cache[key] = (time.monotonic() + FOOD_TTL_S, dishes[:6])
-    return dishes[:6]
+    known = raw.get("known_for") if isinstance(raw.get("known_for"), dict) else {}
+    out = {"dishes": dishes[:6],
+           "known_for": {k.strip().lower(): v.strip()[:60] for k, v in known.items() if isinstance(v, str) and v.strip()}}
+    _dish_cache[key] = (time.monotonic() + FOOD_TTL_S, out)
+    return out
 
 
 def _same_place(asked: str, found: str) -> bool:
@@ -100,38 +109,60 @@ def _same_place(asked: str, found: str) -> bool:
     return bool(words(asked) & words(found))
 
 
+def _spot(p: Dict, origin: Tuple[float, float], known_for: Optional[str] = None) -> Dict:
+    return {**p, "known_for": known_for, "distance_km": round(road_km(origin, (p["lat"], p["lng"])), 1),
+            "travel_min": travel_minutes(origin, (p["lat"], p["lng"]))}
+
+
+def _rank_spots(spots: List[Dict]) -> List[Dict]:
+    """Eateries known for a dish first, then the most-reviewed (what "viral" means in numbers), nearer ones ahead."""
+    out, seen = [], set()
+    for p in sorted(spots, key=lambda p: (p["known_for"] is None, -(math.log10((p["rating_count"] or 0) + 1) * (p["rating"] or 0))
+                                          + 0.4 * p["distance_km"])):
+        if p["place_id"] not in seen and p["distance_km"] <= FOOD_RADIUS_KM:
+            seen.add(p["place_id"])
+            out.append(p)
+    return out[:8]
+
+
+async def _nearby_food(lat: float, lng: float, city: str, veg: bool) -> List[Dict]:
+    general = f"famous {'pure vegetarian ' if veg else ''}local food restaurant {city}"
+    try:
+        found = await search_places(general, near=(lat, lng), limit=20)  # cached: both requests below share it
+    except HTTPException:
+        return []
+    return _rank_spots([_spot(p, (lat, lng)) for p in found if p["category"] == "food"])
+
+
 @router.get("/recommendations/famous-food")
-async def famous_food(lat: float, lng: float, city: str, diet: str = "any", radius_km: float = 10):
-    """Signature dishes of the trip's city, and famous or viral eateries near this stop that serve them."""
+async def famous_food(lat: float, lng: float, city: str, diet: str = "any"):
+    """Fast part: the famous, most-reviewed eateries near this stop (one cached place search)."""
+    veg = diet.lower() in VEG_WORDS
+    return {"spots": await _nearby_food(lat, lng, city, veg), "veg_only": veg,
+            "note": "Places, ratings and distances come from Google Places; dishes are suggested by AI."}
+
+
+@router.get("/recommendations/famous-food/dishes")
+async def famous_food_dishes(lat: float, lng: float, city: str, diet: str = "any"):
+    """Slow part: the city's signature dishes, what the nearby eateries are famous for, and the AI's famous eateries
+    for each dish, kept only if Google Places finds them near this stop."""
     veg = diet.lower() in VEG_WORDS
     origin = (lat, lng)
-    dishes = await city_dishes(city, veg)
-    named = [(d["dish"], s) for d in dishes for s in d["spots"]][:8]
+    nearby = await _nearby_food(lat, lng, city, veg)
+    guide = await food_guide(city, veg, [p["name"] for p in nearby])
+    if guide is None:
+        return {"dishes": [], "spots": nearby, "veg_only": veg, "unavailable": True}
+    named = [(d["dish"], s) for d in guide["dishes"] for s in d["spots"]][:6]
 
     async def look_up(dish: str, spot: str) -> Optional[Dict]:
         found = await search_places(f"{spot}, {city}", near=origin, limit=1)
         # a street stall is often listed without a restaurant type; it is still a place to eat
-        return dict(found[0], known_for=dish, category="food") if found and _same_place(spot, found[0]["name"]) else None
+        return _spot(dict(found[0], category="food"), origin, dish) if found and _same_place(spot, found[0]["name"]) else None
 
-    general = f"famous {'pure vegetarian ' if veg else ''}local food restaurant {city}"
-    results = await asyncio.gather(search_places(general, near=origin, limit=20),
-                                   *[look_up(*n) for n in named], return_exceptions=True)
-    candidates = [p for p in results[1:] if isinstance(p, dict)]
-    if isinstance(results[0], list):
-        candidates += [p for p in results[0] if p["category"] == "food"]
-    spots, seen = [], set()
-    for p in candidates:
-        km = road_km(origin, (p["lat"], p["lng"]))
-        if p["place_id"] in seen or km > min(radius_km, 25):
-            continue
-        seen.add(p["place_id"])
-        spots.append({**p, "known_for": p.get("known_for"), "distance_km": round(km, 1),
-                      "travel_min": travel_minutes(origin, (p["lat"], p["lng"]))})
-    # a dish's famous eatery first, then the most-reviewed (what "viral" means in numbers), nearer ones ahead
-    spots.sort(key=lambda p: (p["known_for"] is None,
-                              -(math.log10((p["rating_count"] or 0) + 1) * (p["rating"] or 0)) + 0.4 * p["distance_km"]))
-    return {"dishes": dishes, "spots": spots[:8], "veg_only": veg,
-            "note": "Dishes are suggested by AI; places, ratings and distances come from Google Places."}
+    looked = await asyncio.gather(*[look_up(*n) for n in named], return_exceptions=True)
+    enriched = [{**p, "known_for": guide["known_for"].get(p["name"].strip().lower())} for p in nearby]
+    return {"dishes": [{k: d[k] for k in ("dish", "veg", "about")} for d in guide["dishes"]],
+            "spots": _rank_spots([p for p in looked if isinstance(p, dict)] + enriched), "veg_only": veg, "unavailable": False}
 
 
 STAY_SORTS = {

@@ -301,8 +301,12 @@ async def ask_json(prompt: str) -> Any:
     global _gemini_last_good
     if not os.getenv("GEMINI_API_KEY"):
         raise Unavailable("no Gemini key")
-    async with httpx.AsyncClient(timeout=15) as client:
-        for model in _gemini_models():
+    # the light models answer a list fastest; overloaded ones (503) usually recover within seconds, so one retry
+    models = sorted(GEMINI_MODELS, key=lambda m: "lite" not in m)
+    async with httpx.AsyncClient(timeout=10) as client:
+        for attempt, model in enumerate(models + models[:2]):
+            if attempt == len(models):
+                await asyncio.sleep(1.5)
             try:
                 r = await client.post(GEMINI_URL.format(model=model), headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"]},
                                       json={"contents": [{"role": "user", "parts": [{"text": prompt}]}],

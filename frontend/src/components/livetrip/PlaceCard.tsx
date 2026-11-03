@@ -28,7 +28,8 @@ function usePlaceInfo(slot: Slot, city: string): PlaceInfo | null | undefined {
     if (skip) return;
     const key = `${name}|${lat?.toFixed(3)}|${lng?.toFixed(3)}`;
     if (!infoCache.has(key)) {
-      const q = new URLSearchParams({ name, city, ...(lat != null ? { lat: String(lat), lng: String(lng) } : {}) });
+      const q = new URLSearchParams({ name, city, ...(lat != null ? { lat: String(lat), lng: String(lng) } : {}),
+                                      ...(slot.activity.place_id ? { place_id: slot.activity.place_id } : {}) });
       infoCache.set(key, api<PlaceInfo>(`/api/places/info?${q}`).catch(() => ({ article: null, description: null, url: null, photos: [] })));
     }
     let alive = true;

@@ -4,16 +4,20 @@ Matching: the nearest Wikipedia article whose title matches the place name, else
 Photos: the article's lead image and the photos used in the article, plus Commons photos taken at that spot whose
 file name names the place (geotags alone are unreliable: a photo of another landmark can be tagged next door).
 Each has author and licence for attribution. Places with no matching article get no description (nothing is
-made up) and, unless a nearby photo names them, no photo. Results are cached for a day.
+made up) and, unless a nearby photo names them, no Commons photo: then Google Maps photos fill in (when a
+place_id and a Places key are there). Results are cached for a day.
 """
 import asyncio
+import os
 import re
 import time
 from difflib import SequenceMatcher
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import quote, unquote
 
+import httpx
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import RedirectResponse
 
 from .geo import haversine_km
 from .osm import WIKIPEDIA, _get
@@ -145,13 +149,77 @@ def prefetch(places: List[Dict], city: str) -> None:
     """Warm the cache for a new trip's stops in the background (three at a time, politely)."""
     async def run():
         for i in range(0, len(places), 3):
-            await asyncio.gather(*[place_info(p["name"], p.get("lat"), p.get("lng"), city) for p in places[i:i + 3]],
+            await asyncio.gather(*[_cached_info(p["name"], p.get("lat"), p.get("lng"), city) for p in places[i:i + 3]],
                                  return_exceptions=True)
     asyncio.ensure_future(run())
 
 
+GOOGLE_PHOTO_NAME = re.compile(r"^places/[A-Za-z0-9_-]+/photos/[A-Za-z0-9_-]+$")
+MAX_GOOGLE_PHOTOS = 3
+# shortcut: in-process caches (lost on restart); fine for one server
+_google_photos: Dict[str, Tuple[float, List[Dict]]] = {}
+_photo_uris: Dict[str, Tuple[float, str]] = {}
+
+
+async def google_photos(place_id: str) -> List[Dict]:
+    """Google Maps photos of a place, for the places Wikimedia has none of (one Place Details call, cached a day)."""
+    hit = _google_photos.get(place_id)
+    if hit and hit[0] > time.monotonic():
+        return hit[1]
+    key = os.getenv("GOOGLE_PLACES_API_KEY")
+    if not key or not re.fullmatch(r"[A-Za-z0-9_-]+", place_id):
+        return []
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            r = await client.get(f"https://places.googleapis.com/v1/places/{place_id}",
+                                 headers={"X-Goog-Api-Key": key, "X-Goog-FieldMask": "photos"})
+    except httpx.HTTPError:
+        return []
+    if r.status_code != 200:
+        return []  # not cached: quota or a blip shouldn't hide photos for a day
+    photos = []
+    for ph in (r.json().get("photos") or [])[:MAX_GOOGLE_PHOTOS]:
+        author = (ph.get("authorAttributions") or [{}])[0]
+        photos.append({"url": f"/api/places/photo?name={quote(ph['name'], safe='')}", "author": author.get("displayName") or "Google Maps user",
+                       "license": "Google Maps", "source_url": ph.get("googleMapsUri") or author.get("uri") or "https://maps.google.com",
+                       "taken_at": None})
+    _google_photos[place_id] = (time.monotonic() + TTL_S, photos)
+    return photos
+
+
+@router.get("/places/photo")
+async def place_photo(name: str):
+    """Sends the browser to a Google photo without exposing the API key: only Google's photo URL leaves the server."""
+    if not GOOGLE_PHOTO_NAME.fullmatch(name):
+        raise HTTPException(400, "Not a Google photo")
+    hit = _photo_uris.get(name)
+    if not (hit and hit[0] > time.monotonic()):
+        key = os.getenv("GOOGLE_PLACES_API_KEY")
+        if not key:
+            raise HTTPException(404, "Photos are not available")
+        try:
+            async with httpx.AsyncClient(timeout=8) as client:
+                r = await client.get(f"https://places.googleapis.com/v1/{name}/media",
+                                     params={"maxWidthPx": 960, "skipHttpRedirect": "true"}, headers={"X-Goog-Api-Key": key})
+        except httpx.HTTPError:
+            raise HTTPException(502, "Google photos unreachable")
+        uri = r.json().get("photoUri") if r.status_code == 200 else None
+        if not uri:
+            raise HTTPException(404, "Photo not found")
+        hit = _photo_uris[name] = (time.monotonic() + TTL_S, uri)
+    return RedirectResponse(hit[1], headers={"Cache-Control": "public, max-age=86400"})
+
+
 @router.get("/places/info")
-async def place_info(name: str, lat: Optional[float] = None, lng: Optional[float] = None, city: str = ""):
+async def place_info(name: str, lat: Optional[float] = None, lng: Optional[float] = None, city: str = "",
+                     place_id: str = ""):
+    info = await _cached_info(name, lat, lng, city)
+    if not info["photos"] and place_id:
+        info = {**info, "photos": await google_photos(place_id)}  # a copy: the cached result stays Wikimedia-only
+    return info
+
+
+async def _cached_info(name: str, lat: Optional[float], lng: Optional[float], city: str):
     if not name.strip() or len(name) > 200:
         raise HTTPException(400, "A place name is required")
     key = (name.strip().lower(), round(lat, 3) if lat is not None else None,

@@ -1047,36 +1047,65 @@ def test_famous_food_follows_diet_and_drops_made_up_eateries(client, monkeypatch
     from livetrip import ai_assistant, recommend
     from conftest import async_fake_places
     recommend._dish_cache.clear()
-    real_ask = ai_assistant.ask_json
-    asked = []
+    asked, first = [], []
 
     async def fake_ask(prompt):
         asked.append(prompt)
-        return [{"dish": "Chole bhature", "veg": True, "about": "Spicy chickpeas", "spots": ["Raju Uncle Chole"]},
-                {"dish": "Mutton thali", "veg": False, "about": "Kolhapuri style", "spots": ["Ghost Mutton House"]},
-                "junk"]
+        return {"dishes": [{"dish": "Chole bhature", "veg": True, "about": "Spicy chickpeas", "spots": ["Raju Uncle Chole"]},
+                           {"dish": "Mutton thali", "veg": False, "about": "Kolhapuri style", "spots": ["Ghost Mutton House"]},
+                           "junk"],
+                "known_for": {first[0]: "Misal pav", "Nowhere Cafe": "Coffee"}}
 
     async def search(query, near=None, limit=20):
         if query.startswith("Ghost Mutton"):  # Google finds something else: the AI's name is not trusted
             return [dict((await async_fake_places("Sharma Snacks, Pune", near, 1))[0])]
         return await async_fake_places(query, near, limit)
 
-    monkeypatch.setattr(ai_assistant, "ask_json", fake_ask)
     monkeypatch.setattr(recommend, "search_places", search)
     q = {"lat": 18.52, "lng": 73.85, "city": "Pune"}
 
-    veg = client.get("/api/recommendations/famous-food", params={**q, "diet": "vegetarian"}).json()
-    assert [d["dish"] for d in veg["dishes"]] == ["Chole bhature"] and veg["veg_only"]
-    assert "vegetarian dishes only" in asked[0]
-    assert veg["spots"][0]["name"] == "Raju Uncle Chole" and veg["spots"][0]["known_for"] == "Chole bhature"
-    assert all(s["distance_km"] <= 10 for s in veg["spots"])
+    # the fast part needs no AI at all
+    fast = client.get("/api/recommendations/famous-food", params={**q, "diet": "vegetarian"}).json()
+    assert fast["spots"] and fast["veg_only"] and all(s["known_for"] is None and s["distance_km"] <= 10 for s in fast["spots"])
+    first.append(fast["spots"][0]["name"])
 
-    both = client.get("/api/recommendations/famous-food", params={**q, "diet": "non-vegetarian"}).json()
+    # no AI key: the dishes part says so, and still returns the nearby eateries
+    slow = client.get("/api/recommendations/famous-food/dishes", params={**q, "diet": "vegetarian"}).json()
+    assert slow["unavailable"] and slow["dishes"] == [] and slow["spots"]
+
+    monkeypatch.setattr(ai_assistant, "ask_json", fake_ask)
+    veg = client.get("/api/recommendations/famous-food/dishes", params={**q, "diet": "vegetarian"}).json()
+    assert not veg["unavailable"] and [d["dish"] for d in veg["dishes"]] == ["Chole bhature"]
+    assert "vegetarian dishes only" in asked[0] and first[0] in asked[0]  # nearby names go to the AI
+    assert veg["spots"][0]["name"] == "Raju Uncle Chole" and veg["spots"][0]["known_for"] == "Chole bhature"
+    assert {s["name"]: s["known_for"] for s in veg["spots"]}[first[0]] == "Misal pav"
+
+    both = client.get("/api/recommendations/famous-food/dishes", params={**q, "diet": "non-vegetarian"}).json()
     assert [d["veg"] for d in both["dishes"]] == [True, False]
     assert not any(s["name"] == "Sharma Snacks" for s in both["spots"])
-
-    # no AI key: no dishes, but the most famous food places nearby still come back
     recommend._dish_cache.clear()
-    monkeypatch.setattr(ai_assistant, "ask_json", real_ask)
-    plain = client.get("/api/recommendations/famous-food", params={**q, "diet": "vegetarian"}).json()
-    assert plain["dishes"] == [] and plain["spots"] and all(s["known_for"] is None for s in plain["spots"])
+
+
+def test_google_photos_fill_in_only_when_wikimedia_has_none(client, monkeypatch):
+    from livetrip import placeinfo
+    calls = []
+
+    async def lookup(name, lat, lng, city):
+        return {"name": name, "article": None, "description": None, "url": None, "source": "none",
+                "photos": [{"url": "wiki.jpg"}] if name == "Hawa Mahal" else []}
+
+    async def google(place_id):
+        calls.append(place_id)
+        return [{"url": "/api/places/photo?name=places%2Fabc%2Fphotos%2Fxyz", "author": "A", "license": "Google Maps",
+                 "source_url": "https://maps.google.com", "taken_at": None}]
+
+    placeinfo._cache.clear()
+    monkeypatch.setattr(placeinfo, "_lookup", lookup)
+    monkeypatch.setattr(placeinfo, "google_photos", google)
+    small = client.get("/api/places/info", params={"name": "Nagar Trekkers", "city": "Ahilyanagar", "place_id": "abc"}).json()
+    assert small["photos"][0]["license"] == "Google Maps" and calls == ["abc"]
+    known = client.get("/api/places/info", params={"name": "Hawa Mahal", "city": "Jaipur", "place_id": "def"}).json()
+    assert known["photos"] == [{"url": "wiki.jpg"}] and calls == ["abc"]  # Wikimedia had one: no Google call
+    # the photo endpoint only ever fetches Google photo names, never another path with the key
+    assert client.get("/api/places/photo", params={"name": "places/abc/../../v1/x"}).status_code == 400
+    placeinfo._cache.clear()
