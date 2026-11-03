@@ -44,11 +44,12 @@ def _rank(places: List[Dict], origin: Tuple[float, float], boosts: Dict[str, flo
 
 
 async def restaurants(lat: float, lng: float, diet: str = "any", budget: str = "medium", radius_km: float = 3,
-                      family: bool = False, pets: bool = False, boosts: Optional[Dict] = None) -> List[Dict]:
+                      family: bool = False, pets: bool = False, boosts: Optional[Dict] = None,
+                      kind: str = "restaurant") -> List[Dict]:
     words = [w for w in (BUDGET_WORDS.get(budget, ""), "pure vegetarian" if diet == "vegetarian" else
                          "vegan" if diet == "vegan" else "", "family friendly" if family else "",
                          "pet friendly" if pets else "") if w]
-    found = await search_places(" ".join(words + ["restaurant"]), near=(lat, lng), limit=20)
+    found = await search_places(" ".join(words + ["cafe" if kind == "cafe" else "restaurant"]), near=(lat, lng), limit=20)
     found = [p for p in found if p["category"] == "food"]
     ranked = _rank(found, (lat, lng), boosts or {})
     return [p for p in ranked if p["distance_km"] <= radius_km][:10]
@@ -56,10 +57,10 @@ async def restaurants(lat: float, lng: float, diet: str = "any", budget: str = "
 
 @router.get("/recommendations/restaurants")
 async def recommend_restaurants(lat: float, lng: float, diet: str = "any", budget: str = "medium",
-                                radius_km: float = 3, family: bool = False, pets: bool = False,
+                                radius_km: float = 3, family: bool = False, pets: bool = False, kind: str = "restaurant",
                                 user: Optional[User] = Depends(optional_user), db: Session = Depends(get_db)):
     return {"results": await restaurants(lat, lng, diet, budget, min(radius_km, 20), family, pets,
-                                         preferred_categories(db, user)),
+                                         preferred_categories(db, user), kind),
             "note": "Ratings and hours come from Google Places; dietary match is based on the place listing."}
 
 

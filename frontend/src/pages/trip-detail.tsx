@@ -169,7 +169,7 @@ export default function TripDetail() {
 
   const openReplace = (slot: Slot) => {
     setReplacing(slot);
-    setReason(slot.kind === "meal" ? "food" : "nearby");
+    setReason(slot.kind === "meal" ? "restaurant" : "nearby");
     setAlternatives(null);
   };
 
@@ -178,7 +178,7 @@ export default function TripDetail() {
     setAlternatives(null);
     const loc = replacing.activity.location;
     const url = replacing.kind === "meal"
-      ? `/api/recommendations/restaurants?lat=${loc.latitude}&lng=${loc.longitude}&diet=${trip?.user_preferences?.food === "vegetarian" ? "vegetarian" : "any"}`
+      ? `/api/recommendations/restaurants?lat=${loc.latitude}&lng=${loc.longitude}&diet=${trip?.user_preferences?.food === "vegetarian" ? "vegetarian" : "any"}&kind=${reason}`
       : `/api/itinerary/${id}/items/${replacing.item_id}/alternatives?reason=${reason}`;
     api<{ alternatives?: Place[]; results?: Place[] }>(url)
       .then((r) => setAlternatives(r.alternatives ?? r.results ?? []))
@@ -540,6 +540,14 @@ export default function TripDetail() {
             <DialogTitle>Replace {replacing?.activity.name}</DialogTitle>
             <DialogDescription>Pick an alternative; times for the rest of the day update automatically.</DialogDescription>
           </DialogHeader>
+          {replacing?.kind === "meal" && (
+            <Tabs value={reason} onValueChange={setReason}>
+              <TabsList className="grid grid-cols-2">
+                <TabsTrigger value="restaurant">Restaurants</TabsTrigger>
+                <TabsTrigger value="cafe">Cafes</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
           {replacing?.kind === "visit" && (
             <Select value={reason} onValueChange={setReason}>
               <SelectTrigger><SelectValue /></SelectTrigger>
