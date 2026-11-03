@@ -1088,6 +1088,18 @@ def test_famous_food_follows_diet_and_drops_made_up_eateries(client, monkeypatch
     recommend._dish_cache.clear()
 
 
+def test_eatery_named_after_a_dish_is_famous_for_that_dish():
+    from livetrip.recommend import _dish_in_name, _fits_name, _same_place
+    assert not _fits_name("Sujata Mastani", "Sabudana Vada") and _fits_name("Sujata Mastani", "Mastani")
+    assert _fits_name("nagar misal shop", "Misal Pav") and _fits_name("Chitale Bandhu Mithaiwale", "Bakarwadi")
+    dishes = [{"dish": "Sabudana Vada"}, {"dish": "Mastani"}, {"dish": "Maharashtrian Thali"}, {"dish": "Misal Pav"}]
+    assert _dish_in_name("Sujata Mastani", dishes) == "Mastani"
+    assert _dish_in_name("nagar misal shop", dishes) == "Misal Pav"
+    assert _dish_in_name("Satvik Veg Thali", dishes) is None  # one word of "Maharashtrian Thali" isn't the dish
+    assert not _same_place("Sukanta Thali", "satvik veg thali", dishes)  # sharing only a food word
+    assert _same_place("Sujata Mastani", "Sujata Mastani - Sadashiv Peth", dishes)
+
+
 def test_google_photos_fill_in_only_when_wikimedia_has_none(client, monkeypatch):
     from livetrip import placeinfo
     calls = []

@@ -114,10 +114,32 @@ async def food_guide(city: str, veg: bool, nearby: List[str]) -> Optional[Dict]:
     return out
 
 
-def _same_place(asked: str, found: str) -> bool:
-    """A looked-up eatery counts only if the result shares a real word with the name asked for."""
-    words = lambda s: {w for w in re.findall(r"[a-z]+", s.lower()) if len(w) >= 4} - {"restaurant", "hotel", "cafe", "famous"}
-    return bool(words(asked) & words(found))
+def _words(s: str) -> set:
+    return {w for w in re.findall(r"[a-z]+", s.lower()) if len(w) >= 4}
+
+
+def _same_place(asked: str, found: str, dishes: List[Dict] = ()) -> bool:
+    """A looked-up eatery counts only if the result shares a real word with the name asked for; a shared food word
+    isn't one ("Sukanta Thali" is not "Satvik Veg Thali")."""
+    generic = {"restaurant", "hotel", "cafe", "famous", "pure", "sweets", "mithai", "dining", "hall", "house"}
+    generic |= {w for d in dishes for w in _words(d["dish"])}
+    return bool((_words(asked) & _words(found)) - generic)
+
+
+def _dish_in_name(name: str, dishes: List[Dict]) -> Optional[str]:
+    """The listed dish an eatery is named after ("Sujata Mastani" -> "Mastani"), if any."""
+    return next((d["dish"] for d in dishes if _words(d["dish"]) and _words(d["dish"]) <= _words(name)), None)
+
+
+# shortcut: a hand list of specialties that shops are named after; extend it when a wrong pairing shows up
+SPECIALTY_WORDS = {"mastani", "misal", "vada", "wada", "bhel", "chaat", "thali", "biryani", "kulfi", "lassi", "chai",
+                   "dosa", "idli", "paratha", "falooda", "juice", "momos", "pizza", "burger", "kebab", "pani", "puri",
+                   "poha", "bhaji", "bhakri", "poli", "chole", "dabeli", "cake", "coffee", "icecream"}
+
+
+def _fits_name(name: str, dish: Optional[str]) -> bool:
+    """An eatery named for one specialty isn't famous for a different dish ("Sujata Mastani" isn't for sabudana vada)."""
+    return not dish or not (_words(name) & SPECIALTY_WORDS) - _words(dish)
 
 
 def _spot(p: Dict, origin: Tuple[float, float], known_for: Optional[str] = None) -> Dict:
@@ -166,11 +188,17 @@ async def famous_food_dishes(lat: float, lng: float, city: str, diet: str = "any
     async def look_up(dish: str, spot: str) -> Optional[Dict]:
         found = await search_places(f"{spot}, {city}", near=origin, limit=1)
         # a street stall is often listed without a restaurant type; it is still a place to eat
-        return _spot(dict(found[0], category="food"), origin, dish) if found and _same_place(spot, found[0]["name"]) else None
+        return _spot(dict(found[0], category="food"), origin, dish) if found and _same_place(spot, found[0]["name"], guide["dishes"]) else None
 
     looked = await asyncio.gather(*[look_up(*n) for n in named], return_exceptions=True)
-    enriched = [{**p, "known_for": guide["known_for"].get(p["name"].strip().lower())} for p in nearby]
-    spots = [p for p in [p for p in looked if isinstance(p, dict)] + enriched if _serves_listed(p["known_for"], guide["dishes"])]
+    # the AI's "known for" guesses about nearby eateries are its weakest claim: an eatery named after a dish, or one
+    # the AI listed under a dish, is famous for that dish instead
+    listed = {s.strip().lower(): d["dish"] for d in guide["dishes"] for s in d["spots"]}
+    enriched = [{**p, "known_for": listed.get(p["name"].strip().lower()) or guide["known_for"].get(p["name"].strip().lower())}
+                for p in nearby]
+    spots = [{**p, "known_for": _dish_in_name(p["name"], guide["dishes"]) or p["known_for"]}
+             for p in [p for p in looked if isinstance(p, dict)] + enriched]
+    spots = [p for p in spots if _serves_listed(p["known_for"], guide["dishes"]) and _fits_name(p["name"], p["known_for"])]
     return {"dishes": [{k: d[k] for k in ("dish", "veg", "about")} for d in guide["dishes"]],
             "spots": _rank_spots(spots), "veg_only": veg, "unavailable": False,
             "note": "Places, ratings and distances come from Google Places; dishes are suggested by AI."}
